@@ -3,3 +3,5 @@ requests
 beautifulsoup4
 langchain
 langchain_openai
+pinecone-client
+sentence-transformers

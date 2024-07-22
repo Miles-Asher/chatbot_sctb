@@ -1,17 +1,25 @@
 from flask import Flask, request, jsonify, render_template
 from chatbot import FAQChatbot
-from scraper import scrape_website
+from scraper import scrape_website, initialize_pinecone, populate_pinecone
 
 app = Flask(__name__)
-
-openai_api_key = "sk-proj-mf80VqVzMcG4X1qfft0mT3BlbkFJHmTjG0veEvUgAcJwBbsn"
 
 # Scrape the website to get FAQs
 url = 'https://en.seoulcitybus.com/customer/faq.php'
 faqs = scrape_website(url)
 
-# Initialize the chatbot with the scraped FAQs
-chatbot = FAQChatbot(faqs, openai_api_key)
+# Initialize Pinecone and populate with FAQs
+index_name = "faq-index"
+api_key = "e382074d-a362-4ae7-aca9-c191d3999ee9"
+environment = {
+    "cloud": "aws",
+    "region": "us-east-1"
+}
+index = initialize_pinecone(index_name, api_key, environment)
+populate_pinecone(index, faqs)
+
+# Initialize the chatbot with Pinecone index
+chatbot = FAQChatbot(index_name, api_key, environment)
 
 @app.route('/')
 def home():
@@ -25,4 +33,4 @@ def chat():
     return jsonify({"answer": answer})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

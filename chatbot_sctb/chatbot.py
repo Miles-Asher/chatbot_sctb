@@ -1,23 +1,21 @@
-from langchain_openai import OpenAI
-from langchain.prompts import PromptTemplate
+from pinecone import Pinecone
+from sentence_transformers import SentenceTransformer
 
 class FAQChatbot:
-    def __init__(self, faqs, openai_api_key):
-        self.faqs = "\n".join([f"Q: {q}\nA: {a}" for q, a in faqs])
-        self.llm = OpenAI(api_key=openai_api_key)
-        self.prompt = PromptTemplate(
-            input_variables=["question", "faqs"],
-            template="""
-            You are a helpful assistant. Here is some context to help answer the question:
-
-            {faqs}
-
-            Question: {question}
-            Answer:
-            """
-        )
+    def __init__(self, index_name, api_key, environment, model_name='all-MiniLM-L6-v2'):
+        self.pc = Pinecone(api_key=api_key)
+        self.index = self.pc.Index(index_name)
+        self.model = SentenceTransformer(model_name)
 
     def get_answer(self, question):
-        prompt_text = self.prompt.format(question=question, faqs=self.faqs)
-        response = self.llm(prompt_text)
-        return response
+        vector = self.model.encode(question).tolist()
+        #print(f"Query vector: {vector}")
+        response = self.index.query(vector=vector, top_k=1, include_metadata=True)
+        #print(f"Response from Pinecone: {response}")
+        
+        if response['matches']:
+            answer = response['matches'][0]['metadata']['answer']
+        else:
+            answer = "Sorry, I couldn't find an answer to your question."
+        
+        return answer
