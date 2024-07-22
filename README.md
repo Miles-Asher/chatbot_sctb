@@ -1,5 +1,6 @@
 README for Seoul City Tour Bus chatbot application \
-  Miles Asher - 7/22/2024
+Miles Asher \
+updated: 7/22/2024
 
 chatbot_sctb/ - primary working directory for chatbot and associated files \
 chatbot_sctb_env/ - directory for venv environment for chatbot, contains files for necessary python modules \
