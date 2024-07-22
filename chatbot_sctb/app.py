@@ -18,8 +18,9 @@ environment = {
 index = initialize_pinecone(index_name, api_key, environment)
 populate_pinecone(index, faqs)
 
-# Initialize the chatbot with Pinecone index
-chatbot = FAQChatbot(index_name, api_key, environment)
+# Initialize the chatbot with Pinecone index and a similarity threshold
+similarity_threshold = 0.6  # Adjust this threshold as needed
+chatbot = FAQChatbot(index_name, api_key, environment, similarity_threshold=similarity_threshold)
 
 @app.route('/')
 def home():

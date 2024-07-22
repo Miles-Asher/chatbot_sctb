@@ -5,13 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatbot</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap">
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-log" id="chat-log"></div>
-        <input type="text" id="user-input" placeholder="Type a message...">
-        <button onclick="sendMessage()">Send</button>
-    </div>
+    <header>
+        <div class="header-container">
+            <h1>Chat with Seoul City Tour Bus</h1>
+        </div>
+    </header>
+    <main>
+        <div class="chat-container">
+            <div class="chat-log" id="chat-log"></div>
+            <div class="chat-input-container">
+                <input type="text" id="user-input" placeholder="Type a message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <div class="footer-container">
+            <p>&copy; 2024 Seoul City Tour Bus. All Rights Reserved.</p>
+        </div>
+    </footer>
 
     <script>
         async function sendMessage() {

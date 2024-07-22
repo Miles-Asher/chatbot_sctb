@@ -5,3 +5,4 @@ langchain
 langchain_openai
 pinecone-client
 sentence-transformers
+openai
