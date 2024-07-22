@@ -1,5 +1,5 @@
 README for Seoul City Tour Bus chatbot application \
-Miles Asher \
+Author: Miles Asher \
 updated: 7/22/2024
 
 chatbot_sctb/ - primary working directory for chatbot and associated files \
