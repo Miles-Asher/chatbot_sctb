@@ -1,9 +1,11 @@
 import openai
 from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
+import detectlanguage
+from deep_translator import GoogleTranslator
 
 class FAQChatbot:
-    def __init__(self, index_name, api_key, environment, model_name='all-MiniLM-L6-v2', similarity_threshold=0.8):
+    def __init__(self, index_name, api_key, environment, model_name='paraphrase-multilingual-MiniLM-L12-v2', similarity_threshold=0.6):
         self.pc = Pinecone(api_key=api_key)
         self.index = self.pc.Index(index_name)
         self.model = SentenceTransformer(model_name)
@@ -21,7 +23,7 @@ class FAQChatbot:
             answer = top_match['metadata']['answer']
             
             # Check if the score meets the similarity threshold
-            print(score)
+            #print(score)
             if score >= self.similarity_threshold:
                 return answer
         
@@ -35,3 +37,7 @@ class FAQChatbot:
             max_tokens=150
         )
         return response.choices[0].message.content.strip()
+
+    def translate_text(self, text, target_language):
+        translator = GoogleTranslator(source='auto', target=target_language)
+        return translator.translate(text)

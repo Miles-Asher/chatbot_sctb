@@ -6,3 +6,6 @@ langchain_openai
 pinecone-client
 sentence-transformers
 openai
+transformers
+deep-translator
+detectlanguage

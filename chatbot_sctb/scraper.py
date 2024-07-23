@@ -51,7 +51,7 @@ def initialize_pinecone(index_name, api_key, environment):
     #print(f"Index {index_name} initialized.")
     return index
 
-def populate_pinecone(index, faqs, model_name='all-MiniLM-L6-v2'):
+def populate_pinecone(index, faqs, model_name='paraphrase-multilingual-MiniLM-L12-v2'):
     model = SentenceTransformer(model_name)
     for i, (question, answer) in enumerate(faqs):
         vector = model.encode(question).tolist()
