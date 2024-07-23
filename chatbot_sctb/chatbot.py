@@ -1,16 +1,19 @@
 import openai
 from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
-import detectlanguage
-from deep_translator import GoogleTranslator
+from dotenv import load_dotenv
+import os
+
+# Load environment data from .env file
+load_dotenv()
 
 class FAQChatbot:
-    def __init__(self, index_name, api_key, environment, model_name='paraphrase-multilingual-MiniLM-L12-v2', similarity_threshold=0.6):
+    def __init__(self, index_name, api_key, model_name='paraphrase-multilingual-MiniLM-L12-v2', similarity_threshold=0.6):
         self.pc = Pinecone(api_key=api_key)
         self.index = self.pc.Index(index_name)
         self.model = SentenceTransformer(model_name)
         self.similarity_threshold = similarity_threshold
-        openai.api_key = 'sk-proj-l8zErLVsj7miqVX1TTEYT3BlbkFJ1RIOv6CHJcFsJ6pKGwfa'
+        openai.api_key = os.getenv("OPENAI_API_KEY")
         self.client = openai.OpenAI(api_key=openai.api_key)
 
     def get_answer(self, question):
@@ -38,6 +41,7 @@ class FAQChatbot:
         )
         return response.choices[0].message.content.strip()
 
-    def translate_text(self, text, target_language):
-        translator = GoogleTranslator(source='auto', target=target_language)
-        return translator.translate(text)
+    # def translate_text(self, text, target_language):
+    #     translator = GoogleTranslator(source='auto', target=target_language)
+    #     return translator.translate(text)
+    

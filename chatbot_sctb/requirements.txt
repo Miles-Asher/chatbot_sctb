@@ -9,3 +9,4 @@ openai
 transformers
 deep-translator
 detectlanguage
+python-dotenv

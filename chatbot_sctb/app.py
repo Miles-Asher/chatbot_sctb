@@ -3,11 +3,16 @@ from chatbot import FAQChatbot
 from scraper import scrape_website, initialize_pinecone, populate_pinecone
 import detectlanguage
 from deep_translator import GoogleTranslator
+from dotenv import load_dotenv
+import os
+
+# Load environment data from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
 # Configure detectlanguage API key
-detectlanguage.configuration.api_key = "908a865c318ba9be28bea2e795a74096" # Move to .env
+detectlanguage.configuration.api_key = os.getenv("DETECTLANGUAGE_API_KEY")
 
 # Scrape the website to get FAQs
 url = 'https://en.seoulcitybus.com/customer/faq.php'
@@ -15,17 +20,16 @@ faqs = scrape_website(url)
 
 # Initialize Pinecone and populate with FAQs
 index_name = "faq-index-1"
-api_key = "e382074d-a362-4ae7-aca9-c191d3999ee9" # Move to .env
+api_key = os.getenv("PINECONE_API_KEY")
 environment = {
-    "cloud": "aws",
-    "region": "us-east-1"
+    "cloud": os.getenv("PINECONE_ENV_CLOUD"),
+    "region": os.getenv("PINECONE_ENV_REGION")
 }
 index = initialize_pinecone(index_name, api_key, environment)
 populate_pinecone(index, faqs)
 
 # Initialize the chatbot with Pinecone index and a similarity threshold
-similarity_threshold = 0.6  # Adjust this threshold as needed
-chatbot = FAQChatbot(index_name, api_key, environment, similarity_threshold=similarity_threshold)
+chatbot = FAQChatbot(index_name, api_key)
 
 @app.route('/')
 def home():
