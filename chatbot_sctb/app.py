@@ -42,7 +42,6 @@ def chat():
     
     # Detect the language of the question
     input_language = detectlanguage.detect(question)[0]['language']
-    #print(input_language)
     if input_language == 'zh':
         input_language = "zh-CN"
     if input_language == 'zh-Hant':

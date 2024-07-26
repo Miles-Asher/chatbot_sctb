@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap">
 </head>
-<body>
+<body data-profile-url="{{ url_for('static', filename='tb-circle.png') }}">
     <header>
         <div class="header-container">
             <h1>Chat with Seoul City Tour Bus</h1>
@@ -17,8 +17,10 @@
         <div class="chat-container">
             <div class="chat-log" id="chat-log"></div>
             <div class="chat-input-container">
+                <div class="loading-indicator" id="loading-indicator" style="display: none;">Typing...</div>
                 <input type="text" id="user-input" placeholder="Type a message...">
-                <button onclick="sendMessage()">Send</button>
+                <button id="send-button">Send</button>
+                <button id="clear-button">Clear History</button>
             </div>
         </div>
     </main>
@@ -28,33 +30,6 @@
         </div>
     </footer>
 
-    <script>
-        async function sendMessage() {
-            const userInput = document.getElementById('user-input').value;
-            if (!userInput) return;
-
-            addMessage(userInput, 'user-message');
-
-            const response = await fetch('/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: userInput })
-            });
-
-            const data = await response.json();
-            addMessage(data.answer, 'bot-message');
-        }
-
-        function addMessage(message, className) {
-            const chatLog = document.getElementById('chat-log');
-            const messageElement = document.createElement('div');
-            messageElement.className = `chat-message ${className}`;
-            messageElement.textContent = message;
-            chatLog.appendChild(messageElement);
-            chatLog.scrollTop = chatLog.scrollHeight;
-        }
-    </script>
+    <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
 </body>
 </html>
