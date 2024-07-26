@@ -1,0 +1,209 @@
+/* Base styles for the body */
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Header styling */
+header {
+    background-color: #ac1f24;
+    padding: 20px;
+    color: white;
+    text-align: center;
+}
+
+.header-container h1 {
+    margin: 0;
+    font-size: 24px;
+}
+
+/* Main content styling */
+main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Chat container styling */
+.chat-container {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    margin: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 600px; /* Set a fixed height for the chat container */
+    position: relative; /* To position the pseudo-element correctly */
+}
+
+.chat-container::before {
+    content: '';
+    background: url('../static/TB_Black.jpg') no-repeat center center; /* Add logo as background */
+    background-size: 30%; /* Adjust size as needed */
+    opacity: 0.1; /* Set low opacity for subtle effect */
+    position: absolute;
+    top: 40%; /* Adjust top to move the logo down */
+    left: 50%;
+    transform: translate(-50%, -50%); /* Center the logo */
+    width: 100%;
+    height: 100%;
+    z-index: 0; /* Ensure it is behind other content */
+    pointer-events: none; /* Make sure it doesn't interfere with user interactions */
+}
+
+/* Ensure the rest of the content is above the pseudo-element */
+.chat-log, .chat-input-container {
+    position: relative;
+    z-index: 1;
+}
+
+/* Chat log styling */
+.chat-log {
+    flex: 1; /* Allow the chat log to grow to fill available space */
+    overflow-y: auto; /* Scrollbar for overflow */
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+/* Chat message styling */
+.chat-message {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 5px;
+    opacity: 1;
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Darker drop shadow */
+    display: flex;
+    align-items: flex-end;
+}
+
+.user-message {
+    text-align: right;
+    background-color: #ac1f24;
+    color: white;
+    border-radius: 15px 15px 0 15px;
+    margin-left: auto;
+    max-width: 75%;
+}
+
+.bot-message {
+    text-align: left;
+    background-color: #f1f1f1;
+    color: #333;
+    border-radius: 15px 15px 15px 0;
+    margin-right: auto;
+    max-width: 70%; /* Move the chat bubble a bit to the right */
+    display: flex;
+    align-items: flex-end;
+    margin-left: 60px; /* Add space for the profile picture */
+    padding-bottom: 10px; /* Add padding to align the profile picture */
+}
+
+.bot-message img {
+    width: 40px; /* Adjust the size of the profile picture as needed */
+    height: 40px;
+    border-radius: 50%;
+    margin-left: -50px; /* Move the profile picture outside the chat bubble */
+    margin-right: 10px;
+    align-self: flex-end; /* Align with the bottom */
+}
+
+.message-content {
+    max-width: calc(100% - 50px); /* Adjust max-width considering the image width and margin */
+}
+
+/* Timestamp styling */
+.timestamp {
+    font-size: 0.8em;
+    color: #888;
+    margin-top: 5px;
+}
+
+/* Chat input container styling */
+.chat-input-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-input-container input[type="text"] {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 10px; /* Add margin to separate from the loading indicator */
+}
+
+.chat-input-container button {
+    padding: 10px 20px;
+    border: none;
+    background-color: #ac1f24;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 5px; /* Add margin between buttons */
+    border-radius: 5px;
+}
+
+/* Loading indicator styling */
+.loading-indicator {
+    text-align: center;
+    margin-bottom: 10px; /* Add margin to separate from the input field */
+    color: #ac1f24;
+    display: none; /* Hide by default */
+}
+
+/* Footer styling */
+footer {
+    background-color: #333;
+    padding: 20px;
+    color: white;
+    text-align: center;
+}
+
+.footer-container p {
+    margin: 0;
+}
+
+/* Keyframes for the send-message animation */
+@keyframes send-message {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-message {
+    animation: send-message 0.5s ease-out; /* Adjust animation duration */
+}
+
+/* Keyframes for the fade-out animation */
+@keyframes fade-out {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
+.fade-out {
+    animation: fade-out 0.5s forwards;
+}
