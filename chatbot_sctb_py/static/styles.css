@@ -86,6 +86,7 @@ main {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Darker drop shadow */
     display: flex;
     align-items: flex-end;
+    position: relative; /* Add this */
 }
 
 .user-message {
@@ -95,6 +96,8 @@ main {
     border-radius: 15px 15px 0 15px;
     margin-left: auto;
     max-width: 75%;
+    position: relative; /* Add this */
+    padding-bottom: 20px; /* Add padding to make space for timestamp */
 }
 
 .bot-message {
@@ -107,7 +110,8 @@ main {
     display: flex;
     align-items: flex-end;
     margin-left: 60px; /* Add space for the profile picture */
-    padding-bottom: 10px; /* Add padding to align the profile picture */
+    padding-bottom: 20px; /* Add padding to make space for timestamp */
+    position: relative; /* Add this */
 }
 
 .bot-message img {
@@ -116,7 +120,8 @@ main {
     border-radius: 50%;
     margin-left: -50px; /* Move the profile picture outside the chat bubble */
     margin-right: 10px;
-    align-self: flex-end; /* Align with the bottom */
+    margin-bottom: -25px; /* Adjust this value to move the image further down */
+    align-self: flex-end; /* Ensure it aligns with the bottom */
 }
 
 .message-content {
@@ -127,7 +132,14 @@ main {
 .timestamp {
     font-size: 0.8em;
     color: #888;
-    margin-top: 5px;
+    position: absolute;
+    bottom: 5px;
+    right: 10px; /* Align to the right for all messages */
+}
+
+/* Specific styling for user message timestamp */
+.user-message .timestamp {
+    color: white; /* Make the timestamp white for user messages */
 }
 
 /* Chat input container styling */
@@ -159,9 +171,12 @@ main {
 /* Loading indicator styling */
 .loading-indicator {
     text-align: center;
-    margin-bottom: 10px; /* Add margin to separate from the input field */
+    margin-bottom: 20px; /* Add margin to separate from the input field */
     color: #ac1f24;
     display: none; /* Hide by default */
+    padding: 2px 0; /* Reduce padding to decrease height */
+    line-height: 16px; /* Adjust line-height to match font size for vertical centering */
+    font-size: 16px; /* Adjust font size if necessary */
 }
 
 /* Footer styling */
