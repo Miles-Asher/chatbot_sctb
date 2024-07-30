@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Widget</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Add basic styles for the chat button */
+        #open-chat-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 999;
+        }
+
+        /* Chat widget container */
+        .chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 400px;
+            height: 600px;
+            background-color: white;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            display: none; /* Initially hidden */
+            flex-direction: column;
+            z-index: 1000;
+        }
+
+        .chat-header {
+            background-color: #ac1f24;
+            color: white;
+            padding: 10px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header span {
+            cursor: pointer;
+        }
+
+        .chat-body {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .chat-footer {
+            padding: 10px;
+            border-top: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <!-- Chat button -->
+    <button id="open-chat-button">Chat with Us</button>
+
+    <!-- Chat widget -->
+    <div class="chat-widget" id="chat-widget">
+        <div class="chat-header">
+            <span>Chat with Seoul City Tour Bus</span>
+            <span id="close-chat">&times;</span>
+        </div>
+        <div class="chat-body">
+            <!-- Include your current chat content here -->
+            <div class="chat-container">
+                <select id="question-dropdown">
+                    <option value="">Select an FAQ...</option>
+                    <option value="Where do I board the bus?">Where do I board the bus?</option>
+                    <option value="Can I get back on after getting off the bus?">Can I get back on after getting off the bus?</option>
+                    <option value="Are bus seats assigned?">Are bus seats assigned?</option>
+                    <option value="What types of buses can I expect to ride?">What types of buses can I expect to ride?</option>
+                    <option value="Does the bus tour operate on rainy days?">Does the bus tour operate on rainy days?</option>
+                    <option value="What time does the Downtown Palace Namsan Course bus depart?">What time does the Downtown Palace Namsan Course bus depart?</option>
+                    <option value="How long does the Downtown Palace Namsan Course take?">How long does the Downtown Palace Namsan Course take?</option>
+                    <option value="Is there a washroom?">Is there a washroom?</option>
+                    <option value="What is the refund policy?">What is the refund policy?</option>
+                </select>
+                <div class="chat-log" id="chat-log"></div>
+                <div class="chat-input-container">
+                    <div class="loading-indicator" id="loading-indicator" style="display: none;">Typing...</div>
+                    <input type="text" id="user-input" placeholder="Type a message...">
+                    <button id="send-button">Send</button>
+                    <button id="clear-button">Clear History</button>
+                </div>
+            </div>
+        </div>
+        <div class="chat-footer">
+            Powered by Seoul City Tour Bus
+        </div>
+    </div>
+
+    <script src="chatbot.js"></script>
+    <script>
+        // JavaScript to handle opening and closing of the chat widget
+        document.getElementById('open-chat-button').addEventListener('click', function() {
+            document.getElementById('chat-widget').style.display = 'flex';
+            this.style.display = 'none';
+        });
+
+        document.getElementById('close-chat').addEventListener('click', function() {
+            document.getElementById('chat-widget').style.display = 'none';
+            document.getElementById('open-chat-button').style.display = 'block';
+        });
+    </script>
+</body>
+</html>

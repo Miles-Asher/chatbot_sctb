@@ -11,7 +11,7 @@ require 'src/chatbot.php';
 
 $app = AppFactory::create();
 
-$app->get('/', function (Request $request, Response $response, array $args) {
+$app->get('/', function (Request $request, Response $response) {
     $response->getBody()->write(file_get_contents('index.html'));
     return $response;
 });
@@ -28,9 +28,9 @@ $app->group('/static', function (RouteCollectorProxy $group) {
     });
 });
 
-$app->post('/chat', function (Request $request, Response $response, array $args) {
+$app->post('/chat', function (Request $request, Response $response) {
     $data = json_decode($request->getBody(), true);
-    $question = $data['message'];
+    $question = $data['message'] ?? '';
 
     // Initialize chatbot with fine-tuned model ID
     $modelId = 'ft:gpt-3.5-turbo-1106:personal:sctb-proto:9qGUJ2Fx';

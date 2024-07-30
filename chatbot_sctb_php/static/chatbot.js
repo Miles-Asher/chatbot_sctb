@@ -3,8 +3,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const sendButton = document.getElementById('send-button');
     const clearButton = document.getElementById('clear-button');
     const chatLog = document.getElementById('chat-log');
-    const loadingIndicator = document.getElementById('loading-indicator');
-
+    const questionDropdown = document.getElementById('question-dropdown');
     const profileImageUrl = document.body.getAttribute('data-profile-url');
 
     loadChatHistory();
@@ -17,13 +16,27 @@ document.addEventListener("DOMContentLoaded", function() {
             sendMessage();
         }
     });
+    questionDropdown.addEventListener('change', function() {
+        const selectedQuestion = questionDropdown.value;
+        if (selectedQuestion) {
+            userInput.value = selectedQuestion;
+            sendButton.click();
+        }
+        questionDropdown.value = ''; // Reset dropdown value
+        userInput.value = ''; // Clear the input box
+        userInput.focus();    // Focus the input box
+        saveChatHistory();
+    });
 
     async function sendMessage() {
         const message = userInput.value.trim();
         if (!message) return;
 
         addMessage(message, 'user-message', true);
-        toggleLoadingIndicator(true);
+        toggleInput(false);
+        setTimeout(() => {addTypingIndicator(); }, 250);
+
+        userInput.value = ''; // Clear the input box
 
         try {
             const response = await fetch('/chat', {
@@ -35,13 +48,14 @@ document.addEventListener("DOMContentLoaded", function() {
             });
 
             const data = await response.json();
+            removeTypingIndicator();
             addMessage(data.answer, 'bot-message', true);
         } catch (error) {
             console.error('Error:', error);
+            removeTypingIndicator();
             addMessage('Sorry, something went wrong. Please try again later.', 'bot-message', true);
         } finally {
-            toggleLoadingIndicator(false);
-            userInput.value = ''; // Clear the input box
+            toggleInput(true);
             userInput.focus();    // Focus the input box
             saveChatHistory();
         }
@@ -79,8 +93,35 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    function toggleLoadingIndicator(show) {
-        loadingIndicator.style.display = show ? 'block' : 'none';
+    function addTypingIndicator() {
+        const typingIndicator = document.createElement('div');
+        typingIndicator.className = 'chat-message bot-message typing-indicator';
+        typingIndicator.id = 'typing-indicator';
+        
+        const imgElement = document.createElement('img');
+        imgElement.src = profileImageUrl; // Profile picture
+        typingIndicator.appendChild(imgElement);
+
+        const messageContent = document.createElement('div');
+        messageContent.className = 'message-content';
+        messageContent.textContent = 'Typing...';
+
+        typingIndicator.appendChild(messageContent);
+        chatLog.appendChild(typingIndicator);
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function removeTypingIndicator() {
+        const typingIndicator = document.getElementById('typing-indicator');
+        if (typingIndicator) {
+            chatLog.removeChild(typingIndicator);
+        }
+    }
+
+    function toggleInput(enabled) {
+        userInput.disabled = !enabled;
+        sendButton.disabled = !enabled;
+        questionDropdown.disabled = !enabled;
     }
 
     function saveChatHistory() {

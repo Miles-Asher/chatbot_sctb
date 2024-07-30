@@ -3,6 +3,7 @@ require 'vendor/autoload.php';
 
 use GuzzleHttp\Client;
 use Dotenv\Dotenv;
+use GuzzleHttp\Exception\RequestException;
 
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
@@ -21,27 +22,31 @@ class FAQChatbot {
     public function getAnswer($question) {
         $prompt = $this->generatePrompt($question);
 
-        $response = $this->client->post('https://api.openai.com/v1/chat/completions', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-            ],
-            'json' => [
-                'model' => $this->modelId,
-                'messages' => [
-                    ['role' => 'system', 'content' => 'You are a helpful assistant for a tour bus company.'],
-                    ['role' => 'user', 'content' => $prompt],
+        try {
+            $response = $this->client->post('https://api.openai.com/v1/chat/completions', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type' => 'application/json',
                 ],
-                'max_tokens' => 150,
-            ],
-        ]);
+                'json' => [
+                    'model' => $this->modelId,
+                    'messages' => [
+                        ['role' => 'system', 'content' => 'You are a helpful assistant for a tour bus company.'],
+                        ['role' => 'user', 'content' => $prompt],
+                    ],
+                    'max_tokens' => 150,
+                ],
+            ]);
 
-        $responseBody = json_decode($response->getBody(), true);
+            $responseBody = json_decode($response->getBody(), true);
 
-        if (isset($responseBody['choices']) && !empty($responseBody['choices'])) {
-            return $responseBody['choices'][0]['message']['content'];
-        } else {
-            return 'Sorry, I couldn\'t find an answer to your question.';
+            if (isset($responseBody['choices'][0]['message']['content'])) {
+                return $responseBody['choices'][0]['message']['content'];
+            } else {
+                return 'Sorry, I couldn\'t find an answer to your question.';
+            }
+        } catch (RequestException $e) {
+            return 'Sorry, there was an error processing your request.';
         }
     }
 
