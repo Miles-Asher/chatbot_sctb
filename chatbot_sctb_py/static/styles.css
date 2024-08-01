@@ -37,7 +37,7 @@ main {
     border-radius: 10px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     width: 100%;
-    max-width: 600px;
+    max-width: 400px;
     padding: 20px;
     margin: 20px;
     display: flex;
@@ -50,7 +50,7 @@ main {
     content: '';
     background: url('../static/TB_Black.jpg') no-repeat center center; /* Add logo as background */
     background-size: 30%; /* Adjust size as needed */
-    opacity: 0.1; /* Set low opacity for subtle effect */
+    opacity: 0.1; /* Set low opacity */
     position: absolute;
     top: 40%; /* Adjust top to move the logo down */
     left: 50%;
@@ -74,6 +74,7 @@ main {
     border-bottom: 1px solid #ccc;
     padding-bottom: 10px;
     margin-bottom: 20px;
+    margin-top: 10px; /* Add margin-top for spacing */
 }
 
 /* Chat message styling */
@@ -86,7 +87,7 @@ main {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Darker drop shadow */
     display: flex;
     align-items: flex-end;
-    position: relative; /* Add this */
+    position: relative;
 }
 
 .user-message {
@@ -96,7 +97,7 @@ main {
     border-radius: 15px 15px 0 15px;
     margin-left: auto;
     max-width: 75%;
-    position: relative; /* Add this */
+    position: relative;
     padding-bottom: 20px; /* Add padding to make space for timestamp */
 }
 
@@ -111,7 +112,7 @@ main {
     align-items: flex-end;
     margin-left: 60px; /* Add space for the profile picture */
     padding-bottom: 20px; /* Add padding to make space for timestamp */
-    position: relative; /* Add this */
+    position: relative;
 }
 
 .bot-message img {
@@ -121,7 +122,7 @@ main {
     margin-left: -50px; /* Move the profile picture outside the chat bubble */
     margin-right: 10px;
     margin-bottom: -25px; /* Adjust this value to move the image further down */
-    align-self: flex-end; /* Ensure it aligns with the bottom */
+    align-self: flex-end;
 }
 
 .message-content {
@@ -142,10 +143,41 @@ main {
     color: white; /* Make the timestamp white for user messages */
 }
 
+/* Dropdown menu styling */
+#question-dropdown {
+    padding: 10px;
+    border: 1px solid #ac1f24;
+    border-radius: 5px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    width: 100%;
+    background-color: white; /* Set background color */
+    color: #333; /* Set text color */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add subtle shadow */
+    appearance: none; /* Remove default arrow */
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23ac1f24" d="M2 0L0 2h4z"/></svg>'); /* Custom arrow */
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px;
+    cursor: pointer; /* Add pointer cursor */
+}
+
+#question-dropdown option {
+    padding: 10px;
+    background-color: white; /* Set background color */
+    color: #333; /* Set text color */
+}
+
+/* Add hover effect to dropdown options */
+#question-dropdown option:hover {
+    background-color: #f1f1f1; /* Change background on hover */
+}
+
 /* Chat input container styling */
 .chat-input-container {
     display: flex;
     flex-direction: column;
+    margin-top: 10px;
 }
 
 .chat-input-container input[type="text"] {
@@ -154,7 +186,7 @@ main {
     border: 1px solid #ccc;
     border-radius: 5px;
     font-size: 16px;
-    margin-bottom: 10px; /* Add margin to separate from the loading indicator */
+    margin-bottom: 10px; /* Adjust margin to separate from the loading indicator */
 }
 
 .chat-input-container button {
@@ -164,20 +196,29 @@ main {
     color: white;
     font-size: 16px;
     cursor: pointer;
-    margin-bottom: 5px; /* Add margin between buttons */
+    margin-bottom: 5px; /* Adjust margin between buttons */
     border-radius: 5px;
 }
 
-/* Loading indicator styling */
-.loading-indicator {
-    text-align: center;
-    margin-bottom: 20px; /* Add margin to separate from the input field */
-    color: #ac1f24;
-    display: none; /* Hide by default */
-    padding: 2px 0; /* Reduce padding to decrease height */
-    line-height: 16px; /* Adjust line-height to match font size for vertical centering */
-    font-size: 16px; /* Adjust font size if necessary */
+/* Typing indicator styling */
+.typing-indicator {
+    max-width: 16%;
+    margin-left: 60px;
+    display: flex;
+    align-items: flex-end;
+    position: relative;
+    margin-bottom: -25px;
+    padding-top: -100px; /* Adjust padding to reduce height */
+    animation: send-message 0.5s ease-out;
 }
+
+.typing-indicator .message-content {
+    font-style: italic;
+    line-height: .3; /* Adjust line height to reduce bubble height */
+    margin-bottom: 0;
+}
+
+
 
 /* Footer styling */
 footer {
