@@ -1,47 +1,145 @@
-import openai
-from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
-from dotenv import load_dotenv
+#import csv
 import os
+import requests
+import pandas as pd
+import numpy as np
+from dotenv import load_dotenv
+from sentence_transformers import SentenceTransformer
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.agents import create_react_agent, AgentExecutor, tool
+from langchain_openai import ChatOpenAI
+from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
+from langchain.agents.format_scratchpad.openai_tools import (
+    format_to_openai_tool_messages,
+)
 
-# Load environment data from .env file
+
+# Load the OpenAI API key from environment variable
 load_dotenv()
+openai_api_key = os.getenv('OPENAI_API_KEY')
 
-class FAQChatbot:
-    def __init__(self, index_name, api_key, model_name='paraphrase-multilingual-MiniLM-L12-v2', similarity_threshold=0.6):
-        self.pc = Pinecone(api_key=api_key)
-        self.index = self.pc.Index(index_name)
-        self.model = SentenceTransformer(model_name)
-        self.similarity_threshold = similarity_threshold
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        self.client = openai.OpenAI(api_key=openai.api_key)
+# Ensure the API key is set
+if not openai_api_key:
+    raise ValueError("The OpenAI API key is not set. Please set the 'OPENAI_API_KEY' environment variable.")
 
-    def get_answer(self, question):
-        vector = self.model.encode(question).tolist()
-        response = self.index.query(vector=vector, top_k=1, include_metadata=True)
-        
-        if response['matches']:
-            top_match = response['matches'][0]
-            score = top_match['score']
-            answer = top_match['metadata']['answer']
-            
-            # Check if the score meets the similarity threshold
-            #print(score)
-            if score >= self.similarity_threshold:
-                return answer
-        
-        # Fall back to GPT model if no suitable match is found
-        return self.get_gpt_answer(question)
+# Setup LangChain model with the OpenAI API key
+llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.2, openai_api_key=openai_api_key)
 
-    def get_gpt_answer(self, question):
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": question}],
-            max_tokens=150
-        )
-        return response.choices[0].message.content.strip()
+# Load the CSV file
+df = pd.read_csv('data/extracted_qna 1.csv')
+#print(df.head())
+model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))
+df.to_pickle('questions_embeddings.pkl')
 
-    # def translate_text(self, text, target_language):
-    #     translator = GoogleTranslator(source='auto', target=target_language)
-    #     return translator.translate(text)
+# Function to search for similar questions to query
+def find_similar_question(query, df, model, threshold=0.6):
+    query_embedding = model.encode(query)
+
+    df['similarity'] = df['embeddings'].apply(lambda x: np.dot(query_embedding, x) / (np.linalg.norm(query_embedding) * np.linalg.norm(x)))
+
+    similar_question = df.loc[df['similarity'].idxmax()]
+    print(f"Similarity score: {similar_question['similarity']}")
+    print(f"Similar question: {similar_question['Question']}")
+
+    if similar_question['similarity'] >= threshold:
+        return similar_question['Answer']
+    else:
+        return None
     
+df = pd.read_pickle('questions_embeddings.pkl')
+
+
+# Define the tool functions
+@tool
+def csv_tool(query: str):
+    """Query the CSV file for pre-answered questions"""
+    answer = find_similar_question(query, df, model)
+    return answer if answer else "No relevant information found in CSV."
+
+@tool
+def website_tool(query: str):
+    """Query the company website for information"""
+    url = f"https://en.seoulcitybus.com/index.php"
+    response = requests.get(url)
+    if response.status_code == 200:
+        # Process the website content to extract relevant information
+        return "Information found on the website."
+    return "No relevant information found on the website."
+
+@tool
+def api_tool(query: str):
+    """Query the API for information about other businesses"""
+    api_url = "https://api.seoulcitybus.com/extend_allience_all_json.php"
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        data = response.json()
+        # Process the API response to find relevant information
+        for item in data:
+            if query.lower() in item["name"]["en"].lower():
+                return item["info"]["en"]
+    return "No relevant information found in the API."
+
+tools = [csv_tool, website_tool, api_tool]
+tool_names = ", ".join([tool.name for tool in tools])
+chat_history = []
+
+# Define the prompt template
+MEMORY_KEY = "chat_history"
+prompt = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are a helpful assistant who provides accurate information about Seoul City Tour Bus services. \
+            For questions about Seoul City Tour Bus, you should: \
+            first try to find information using the CSV tool, \
+            second look for relevant information using website tool, \
+            finally fall back on a response generated by the LLM. \
+            For questions about other aspects of tourism in Korea, you should: \
+            first try to find information using the API tool, \
+            then fall back on a response generated by the LLM."
+        ),
+        MessagesPlaceholder(variable_name=MEMORY_KEY),
+        ("user", "{input}"),
+        MessagesPlaceholder(variable_name="agent_scratchpad"), 
+    ]
+)
+
+llm_with_tools = llm.bind_tools(tools)
+
+# Create the ReAct agent with tools
+agent = (
+    {
+        "input": lambda x: x["input"],
+        "agent_scratchpad": lambda x: format_to_openai_tool_messages(
+            x["intermediate_steps"]
+        ),
+        "chat_history": lambda x: x["chat_history"],
+    }
+    | prompt
+    | llm_with_tools
+    | OpenAIToolsAgentOutputParser()
+)
+
+# Function to handle queries
+def handle_query(query):
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+    response = agent_executor.invoke({"input": query, "chat_history": chat_history})
+    chat_history.extend(
+        [
+            HumanMessage(content=query),
+            AIMessage(content=response["output"]),
+        ]
+    )
+        
+    if "No relevant information found" in response['output']:
+        return "I do not know the answer to this question."
+    return response['output']
+
+# Example usage
+query = "is food allowed on the bus?"
+response = handle_query(query)
+print(response)
+
+# print(chat_history)

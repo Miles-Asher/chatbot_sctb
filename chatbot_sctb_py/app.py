@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template
-from chatbot import FAQChatbot
+from chatbot_sctb_py.chatbot import FAQChatbot
 from scraper import scrape_website, initialize_pinecone, populate_pinecone
 import detectlanguage
 from deep_translator import GoogleTranslator

@@ -2,7 +2,7 @@ flask
 requests
 beautifulsoup4
 langchain
-langchain_openai
+langchain-community
 pinecone-client
 sentence-transformers
 openai
@@ -10,3 +10,6 @@ transformers
 deep-translator
 detectlanguage
 python-dotenv
+pandas
+docarray
+numpy
