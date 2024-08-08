@@ -3,7 +3,9 @@ import os
 import requests
 import pandas as pd
 import numpy as np
+import urllib.parse
 from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -50,6 +52,45 @@ def find_similar_question(query, df, model, threshold=0.6):
     
 df = pd.read_pickle('questions_embeddings.pkl')
 
+# Function to load data from URL
+def scrape_website(url):
+    try:
+        response = requests.get(url)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to retrieve main URL {url}: {e}")
+        return "No relevant information found on the website.", []
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        main_content = soup.get_text()
+
+        subpage_links = set()
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            parsed_url = urllib.parse.urlparse(href)
+            if parsed_url.scheme in ['http', 'https']:
+                full_url = urllib.parse.urljoin(url, href)
+                subpage_links.add(full_url)
+
+        subpage_contents = []
+        for link in subpage_links:
+            try:
+                sub_response = requests.get(link)
+                if sub_response.status_code == 200:
+                    sub_soup = BeautifulSoup(sub_response.content, 'html.parser')
+                    sub_content = sub_soup.get_text()
+                    subpage_contents.append(sub_content)
+                else:
+                    print(f"Failed to retrieve {link}: Status code {sub_response.status_code}")
+            except requests.exceptions.RequestException as e:
+                print(f"Failed to retrieve {link}: {e}")
+
+        return main_content, subpage_contents
+
+    print(f"Failed to retrieve main URL {url}: Status code {response.status_code}")
+    return "No relevant information found on the website.", []
+
 
 # Define the tool functions
 @tool
@@ -60,13 +101,9 @@ def csv_tool(query: str):
 
 @tool
 def website_tool(query: str):
-    """Query the company website for information"""
-    url = f"https://en.seoulcitybus.com/index.php"
-    response = requests.get(url)
-    if response.status_code == 200:
-        # Process the website content to extract relevant information
-        return "Information found on the website."
-    return "No relevant information found on the website."
+    """Query the a website for information"""
+    main_content, subpage_contents = scrape_website('https://en.seoulcitybus.com/index.php')
+    return main_content, subpage_contents
 
 @tool
 def api_tool(query: str):
@@ -138,7 +175,11 @@ def handle_query(query):
     return response['output']
 
 # Example usage
-query = "is food allowed on the bus?"
+query = "what time does the last bus leave?"
+response = handle_query(query)
+print(response)
+
+query = "what are the operating hours?"
 response = handle_query(query)
 print(response)
 
