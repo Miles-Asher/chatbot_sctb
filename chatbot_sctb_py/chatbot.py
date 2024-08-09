@@ -53,44 +53,42 @@ def find_similar_question(query, df, model, threshold=0.6):
 df = pd.read_pickle('questions_embeddings.pkl')
 
 # Function to load data from URL
-def scrape_website(url):
-    try:
-        response = requests.get(url)
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to retrieve main URL {url}: {e}")
-        return "No relevant information found on the website.", []
+def compile_website_content(urls):
+    combined_content = ""
 
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
+    for url in urls:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()  # Raises an HTTPError if the status code is 4xx or 5xx
+            soup = BeautifulSoup(response.content, 'html.parser')
+            page_content = soup.get_text(separator="\n", strip=True)
+            combined_content += page_content + "\n\n"
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred for {url}: {http_err}")
+        except requests.exceptions.RequestException as req_err:
+            print(f"Request error occurred for {url}: {req_err}")
+        except Exception as err:
+            print(f"An error occurred for {url}: {err}")
 
-        main_content = soup.get_text()
+    return combined_content
 
-        subpage_links = set()
-        for link in soup.find_all('a', href=True):
-            href = link['href']
-            parsed_url = urllib.parse.urlparse(href)
-            if parsed_url.scheme in ['http', 'https']:
-                full_url = urllib.parse.urljoin(url, href)
-                subpage_links.add(full_url)
+# List of URLs you want to scrape
+urls_to_scrape = [
+    'https://en.seoulcitybus.com/index.php',
+    'https://en.seoulcitybus.com/service/tour_course_view.php?code=1',
+    'https://en.seoulcitybus.com/service/tour_course_view.php?code=2',
+    'https://en.seoulcitybus.com/service/tour_course_view.php?code=3',
+    'https://en.seoulcitybus.com/service/tour_course_view.php?code=4',
+    'https://en.seoulcitybus.com/service/seoulcitytourbus.php',
+    'https://en.seoulcitybus.com/service/bus_info.php',
+    'https://en.seoulcitybus.com/alliance/alliance_list.php',
+    'https://en.seoulcitybus.com/alliance/alliance_use_info.php',
+    'https://en.seoulcitybus.com/customer/faq.php',
+    'https://en.seoulcitybus.com/board/board_view.php?t=N&code=4'
+    # Add more URLs as needed
+]
 
-        subpage_contents = []
-        for link in subpage_links:
-            try:
-                sub_response = requests.get(link)
-                if sub_response.status_code == 200:
-                    sub_soup = BeautifulSoup(sub_response.content, 'html.parser')
-                    sub_content = sub_soup.get_text()
-                    subpage_contents.append(sub_content)
-                else:
-                    print(f"Failed to retrieve {link}: Status code {sub_response.status_code}")
-            except requests.exceptions.RequestException as e:
-                print(f"Failed to retrieve {link}: {e}")
-
-        return main_content, subpage_contents
-
-    print(f"Failed to retrieve main URL {url}: Status code {response.status_code}")
-    return "No relevant information found on the website.", []
-
+# Compile all the information into one place
 
 # Define the tool functions
 @tool
@@ -102,8 +100,8 @@ def csv_tool(query: str):
 @tool
 def website_tool(query: str):
     """Query the a website for information"""
-    main_content, subpage_contents = scrape_website('https://en.seoulcitybus.com/index.php')
-    return main_content, subpage_contents
+    compiled_content = compile_website_content(urls_to_scrape)
+    return compiled_content
 
 @tool
 def api_tool(query: str):
@@ -175,12 +173,12 @@ def handle_query(query):
     return response['output']
 
 # Example usage
-query = "what time does the last bus leave?"
+query = "is there wifi on the bus?"
 response = handle_query(query)
 print(response)
 
-query = "what are the operating hours?"
-response = handle_query(query)
-print(response)
+# query = "what are the operating hours?"
+# response = handle_query(query)
+# print(response)
 
 # print(chat_history)
