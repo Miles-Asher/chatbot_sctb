@@ -3,7 +3,6 @@ import os
 import requests
 import pandas as pd
 import numpy as np
-import urllib.parse
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
@@ -26,7 +25,7 @@ if not openai_api_key:
     raise ValueError("The OpenAI API key is not set. Please set the 'OPENAI_API_KEY' environment variable.")
 
 # Setup LangChain model with the OpenAI API key
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.2, openai_api_key=openai_api_key)
+llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
 
 # Load the CSV file
 df = pd.read_csv('data/extracted_qna 1.csv')
@@ -36,7 +35,7 @@ df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))
 df.to_pickle('questions_embeddings.pkl')
 
 # Function to search for similar questions to query
-def find_similar_question(query, df, model, threshold=0.6):
+def find_similar_question(query, df, model, threshold=0.8):
     query_embedding = model.encode(query)
 
     df['similarity'] = df['embeddings'].apply(lambda x: np.dot(query_embedding, x) / (np.linalg.norm(query_embedding) * np.linalg.norm(x)))
@@ -53,8 +52,9 @@ def find_similar_question(query, df, model, threshold=0.6):
 df = pd.read_pickle('questions_embeddings.pkl')
 
 # Function to load data from URL
-def compile_website_content(urls):
-    combined_content = ""
+def compile_website_content(urls, query, model, threshold=0.6):
+
+    query_embedding = model.encode(query)
 
     for url in urls:
         try:
@@ -62,19 +62,29 @@ def compile_website_content(urls):
             response.raise_for_status()  # Raises an HTTPError if the status code is 4xx or 5xx
             soup = BeautifulSoup(response.content, 'html.parser')
             page_content = soup.get_text(separator="\n", strip=True)
-            combined_content += page_content + "\n\n"
+
+            page_embedding = model.encode(page_content)
+
+            similarity = np.dot(query_embedding, page_embedding) / (np.linalg.norm(query_embedding) * np.linalg.norm(page_embedding))
+
+            print(similarity)
+
+            if similarity >= threshold:
+                return page_content
+                        
         except requests.exceptions.HTTPError as http_err:
             print(f"HTTP error occurred for {url}: {http_err}")
         except requests.exceptions.RequestException as req_err:
             print(f"Request error occurred for {url}: {req_err}")
         except Exception as err:
             print(f"An error occurred for {url}: {err}")
-
-    return combined_content
+        
+    return None
 
 # List of URLs you want to scrape
 urls_to_scrape = [
     'https://en.seoulcitybus.com/index.php',
+    'https://en.seoulcitybus.com/customer/faq.php',
     'https://en.seoulcitybus.com/service/tour_course_view.php?code=1',
     'https://en.seoulcitybus.com/service/tour_course_view.php?code=2',
     'https://en.seoulcitybus.com/service/tour_course_view.php?code=3',
@@ -83,12 +93,23 @@ urls_to_scrape = [
     'https://en.seoulcitybus.com/service/bus_info.php',
     'https://en.seoulcitybus.com/alliance/alliance_list.php',
     'https://en.seoulcitybus.com/alliance/alliance_use_info.php',
-    'https://en.seoulcitybus.com/customer/faq.php',
     'https://en.seoulcitybus.com/board/board_view.php?t=N&code=4'
     # Add more URLs as needed
 ]
 
-# Compile all the information into one place
+# Get available API fields for prompt reference
+def get_available_fields():
+    """Retrieve and return the available fields from the API."""
+    api_url = "https://api.seoulcitybus.com/extend_allience_all_json.php"
+    response = requests.get(api_url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        if len(data) > 0:
+            return list(data[0].keys())
+    return []
+
+available_fields_str = ", ".join(get_available_fields())
 
 # Define the tool functions
 @tool
@@ -100,20 +121,32 @@ def csv_tool(query: str):
 @tool
 def website_tool(query: str):
     """Query the a website for information"""
-    compiled_content = compile_website_content(urls_to_scrape)
-    return compiled_content
+    compiled_content = compile_website_content(urls_to_scrape, query, model)
+    return compiled_content if compiled_content else "No relevant information found on websites."
 
 @tool
-def api_tool(query: str):
-    """Query the API for information about other businesses"""
+def api_tool(query: str, field: str):
+    """
+    Query the API for information about other businesses and retrieve a specific field.
+
+    Available Fields:
+    - {dynamic_fields}
+    """
+    dynamic_fields = ', '.join(get_available_fields())
+    
     api_url = "https://api.seoulcitybus.com/extend_allience_all_json.php"
     response = requests.get(api_url)
+    
     if response.status_code == 200:
         data = response.json()
         # Process the API response to find relevant information
         for item in data:
             if query.lower() in item["name"]["en"].lower():
-                return item["info"]["en"]
+                # Check if the specified field exists in the item
+                if field in item:
+                    return item[field]
+                else:
+                    return f"Field '{field}' not found in the API response."
     return "No relevant information found in the API."
 
 tools = [csv_tool, website_tool, api_tool]
@@ -126,14 +159,16 @@ prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            "You are a helpful assistant who provides accurate information about Seoul City Tour Bus services. \
+            f"You are a helpful assistant who provides accurate information about Seoul City Tour Bus services. \
             For questions about Seoul City Tour Bus, you should: \
-            first try to find information using the CSV tool, \
-            second look for relevant information using website tool, \
-            finally fall back on a response generated by the LLM. \
-            For questions about other aspects of tourism in Korea, you should: \
-            first try to find information using the API tool, \
-            then fall back on a response generated by the LLM."
+                - first try to find information using the CSV tool, \
+                - second look for relevant information using website tool, \
+                - third fall back on a response generated by the LLM. \
+            For questions about any other businesses, tourist attractions, or landmarks in Seoul, you should: \
+                - first try to find information using the API tool. \
+                    The available fields for the API tool are: {available_fields_str}. \
+                    Only use these fields when querying the API tool. \
+                - second fall back on a response generated by the LLM."
         ),
         MessagesPlaceholder(variable_name=MEMORY_KEY),
         ("user", "{input}"),
@@ -167,18 +202,27 @@ def handle_query(query):
             AIMessage(content=response["output"]),
         ]
     )
-        
-    if "No relevant information found" in response['output']:
-        return "I do not know the answer to this question."
+
     return response['output']
 
-# Example usage
-query = "is there wifi on the bus?"
+# *****Example usage*****
+
+# print(chat_history)
+
+query = "What bus courses are offered?"
 response = handle_query(query)
 print(response)
 
-# query = "what are the operating hours?"
-# response = handle_query(query)
-# print(response)
+query = "Can I bring a wheelchair on the bus?"
+response = handle_query(query)
+print(response)
+
+query = "Can you recommend a good cafe in Seoul?"
+response = handle_query(query)
+print(response)
+
+query = "Can you recommend a different cafe?"
+response = handle_query(query)
+print(response)
 
 # print(chat_history)
