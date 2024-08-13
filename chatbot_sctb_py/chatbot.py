@@ -3,12 +3,14 @@ import os
 import requests
 import pandas as pd
 import numpy as np
+import urllib.request
+import json
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from sentence_transformers import SentenceTransformer
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.agents import create_react_agent, AgentExecutor, tool
+from langchain.agents import AgentExecutor, tool
 from langchain_openai import ChatOpenAI
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 from langchain.agents.format_scratchpad.openai_tools import (
@@ -26,6 +28,7 @@ if not openai_api_key:
 
 # Setup LangChain model with the OpenAI API key
 llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
+
 
 # Load the CSV file
 df = pd.read_csv('data/extracted_qna 1.csv')
@@ -50,6 +53,7 @@ def find_similar_question(query, df, model, threshold=0.8):
         return None
     
 df = pd.read_pickle('questions_embeddings.pkl')
+
 
 # Function to load data from URL
 def compile_website_content(urls, query, model, threshold=0.6):
@@ -97,6 +101,7 @@ urls_to_scrape = [
     # Add more URLs as needed
 ]
 
+
 # Get available API fields for prompt reference
 def get_available_fields():
     """Retrieve and return the available fields from the API."""
@@ -109,7 +114,8 @@ def get_available_fields():
             return list(data[0].keys())
     return []
 
-available_fields_str = ", ".join(get_available_fields())
+# print(get_available_fields())
+
 
 # Define the tool functions
 @tool
@@ -120,36 +126,58 @@ def csv_tool(query: str):
 
 @tool
 def website_tool(query: str):
-    """Query the a website for information"""
+    """Query websites for information"""
     compiled_content = compile_website_content(urls_to_scrape, query, model)
     return compiled_content if compiled_content else "No relevant information found on websites."
 
+# @tool
+# def business_inquiry_tool(query: str):
+#     """Query the API to provide detailed information about a specific business."""
+#     with urllib.request.urlopen('https://api.seoulcitybus.com/extend_allience_all_json.php') as url:
+#         data = json.load(url)
+    
+#     query_lower = query.lower()
+
+#     for item in data:
+#         if 'name' in item and query_lower in item['name'].lower():
+#             info = item.get('info', 'No detailed information available')
+#             address = item.get('address', 'Address not provided')
+#             hours = item.get('hours', 'Hours not provided')
+#             return f"{item['name']} is {info}. It is located at {address} and is open from {hours}. Would you like to know more?"
+    
+#     return "No relevant information found about the specific business in the API."
+
 @tool
-def api_tool(query: str, field: str):
+def recommendation_tool(query: str):
     """
-    Query the API for information about other businesses and retrieve a specific field.
-
-    Available Fields:
-    - {dynamic_fields}
+    Provide a list of recommendations based on business categories.
     """
-    dynamic_fields = ', '.join(get_available_fields())
+    with urllib.request.urlopen('https://api.seoulcitybus.com/extend_allience_all_json.php') as url:
+        data = json.load(url)
     
-    api_url = "https://api.seoulcitybus.com/extend_allience_all_json.php"
-    response = requests.get(api_url)
-    
-    if response.status_code == 200:
-        data = response.json()
-        # Process the API response to find relevant information
-        for item in data:
-            if query.lower() in item["name"]["en"].lower():
-                # Check if the specified field exists in the item
-                if field in item:
-                    return item[field]
-                else:
-                    return f"Field '{field}' not found in the API response."
-    return "No relevant information found in the API."
+    query_lower = query.lower().rstrip('s')
 
-tools = [csv_tool, website_tool, api_tool]
+    recommendations = []
+    for item in data:
+        for cate_field in ['cate1_name', 'cate2_name']:
+            # Get the category field value, which is expected to be a dictionary
+            cate_dict = item.get(cate_field, {})
+            if isinstance(cate_dict, dict):
+                # Check all language variations within the dictionary
+                for lang, value in cate_dict.items():
+                    if isinstance(value, str) and query_lower in value.lower():
+                        recommendations.append(item['name']['en'])
+                        break  # No need to check the other languages if a match is found
+
+    if recommendations:
+        rec_list = ', '.join(recommendations[:5])  # Limit to 5 recommendations for brevity
+        return f"Here are some recommended {query}: {rec_list}. Which one would you like to know more about?"
+    
+    return "No relevant recommendations found in the API."
+
+    
+
+tools = [csv_tool, website_tool, recommendation_tool]
 tool_names = ", ".join([tool.name for tool in tools])
 chat_history = []
 
@@ -159,22 +187,27 @@ prompt = ChatPromptTemplate.from_messages(
     [
         (
             "system",
-            f"You are a helpful assistant who provides accurate information about Seoul City Tour Bus services. \
-            For questions about Seoul City Tour Bus, you should: \
-                - first try to find information using the CSV tool, \
-                - second look for relevant information using website tool, \
-                - third fall back on a response generated by the LLM. \
-            For questions about any other businesses, tourist attractions, or landmarks in Seoul, you should: \
-                - first try to find information using the API tool. \
-                    The available fields for the API tool are: {available_fields_str}. \
-                    Only use these fields when querying the API tool. \
-                - second fall back on a response generated by the LLM."
+            "You are a knowledgeable assistant focused on providing accurate information about Seoul City Tour Bus services "
+            "and other tourist-related inquiries in Seoul. Your task is to respond to user questions by leveraging available tools "
+            "efficiently. Follow this order of operations: \n\n"
+            "1. **For inquiries about Seoul City Tour Bus services:**\n"
+            "   - First, try to find relevant information using the CSV tool.\n"
+            "   - If no relevant information is found, use the Website tool to search.\n"
+            # "2. **For inquiries about specific businesses in Seoul:**\n"
+            # "   - Use the Business Inquiry tool to retrieve detailed information.\n"
+            "3. **For recommendations of types of businesses or attractions in Seoul:**\n"
+            "   - Use the Recommendation tool to suggest relevant options.\n"
+            "4. **General guidelines:**\n"
+            "   - Move to the next tool only if the current tool does not yield relevant information.\n"
+            "   - Strive to provide the most accurate and concise information available.\n"
+            "   - Log all tool usage and fallback scenarios for future reference."
         ),
         MessagesPlaceholder(variable_name=MEMORY_KEY),
         ("user", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"), 
     ]
 )
+
 
 llm_with_tools = llm.bind_tools(tools)
 
@@ -192,10 +225,23 @@ agent = (
     | OpenAIToolsAgentOutputParser()
 )
 
+
 # Function to handle queries
 def handle_query(query):
+    # Prepare the input dictionary with the necessary variables
+    input_dict = {
+        "input": query,
+        "chat_history": chat_history,
+        "agent_scratchpad": "",  # Initialize with an empty scratchpad if necessary
+    }
+    
+    # Create the AgentExecutor with the updated input dictionary
     agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-    response = agent_executor.invoke({"input": query, "chat_history": chat_history})
+    
+    # Invoke the agent with the correct input dictionary
+    response = agent_executor.invoke(input_dict)
+    
+    # Update chat history with the current interaction
     chat_history.extend(
         [
             HumanMessage(content=query),
@@ -209,20 +255,39 @@ def handle_query(query):
 
 # print(chat_history)
 
-query = "What bus courses are offered?"
-response = handle_query(query)
-print(response)
+# # **CSV tool test**
+# query = "Can I bring a wheelchair on the bus?"
+# response = handle_query(query)
+# print(response)
 
-query = "Can I bring a wheelchair on the bus?"
-response = handle_query(query)
-print(response)
+# # **multilingual CSV tool test**
+# query = "버스에 휠체어를 가져갈 수 있나요?"
+# response = handle_query(query)
+# print(response)
 
-query = "Can you recommend a good cafe in Seoul?"
-response = handle_query(query)
-print(response)
+# # **website tool test**
+# query = "What bus courses are offered?"
+# response = handle_query(query)
+# print(response)
 
-query = "Can you recommend a different cafe?"
-response = handle_query(query)
-print(response)
+# # **multilingual website tool test**
+# query = "어떤 버스 코스가 제공되나요?"
+# response = handle_query(query)
+# print(response)
+
+# # **chat memory test**
+# query = "Is the third course currently available?"
+# response = handle_query(query)
+# print(response)
+
+# # **recommendation tool test**
+# query = "Recommend me some good tourist attractions."
+# response = handle_query(query)
+# print(response)
+
+# # **multilingual recommendation tool test**
+# query = "좋은 카페를 추천해 주세요."
+# response = handle_query(query)
+# print(response)
 
 # print(chat_history)
