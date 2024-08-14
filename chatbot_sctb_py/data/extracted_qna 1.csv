@@ -61,7 +61,7 @@ Are we allowed to bring stroller onto the bus?,"Yes, you are allowed to bring a 
 근처에 하루 종일 차를 두고 갈 수 있는 주차장이 있나요?,"저희 주변으로는 무료주차장은 따로 없으며, 주변의 유료 주차장을 이용하셔야합니다. 가장 가까운 곳은 코리아나 호텔 (유료) 주차장입니다."
 버스 종점은 어디인가요?,저희 버스는 순환형 버스로 시작과 종점이 동일합니다. 코스와 정류장에 대한 정보는 매표소에서 안내지로도 수령하실 수 있습니다.
 어디에 주차하나요?,"저희 주변으로는 무료주차장은 따로 없으며, 주변의 유료 주차장을 이용하셔야합니다. 가장 가까운 곳은 코리아나 호텔 (유료) 주차장입니다."
-Are the tourist spots wheelchair accessible?,"As far as I know, wheelchair movement is possible in most tourist attractions. If you are curious about the exact information, please contact the tourism information center in Seoul."
+Are the tourist spots accessible for wheelchairs?,"As far as I know, wheelchair movement is possible in most tourist attractions. If you are curious about the exact information, please contact the tourism information center in Seoul."
 단체예약이 가능할까요?,단체 예약도 가능하지만 탑승시간은 지정되지 않기 때문에 선착순 탑승입니다.
 "버스 1대를 온전히 대절하는 것이 가능한 지, 가능하다면 비용은 얼마나 될까요?","버스 1대를 대절할 경우 별도의 견적을 따로 받으셔야 되면 시간,인원,노선에 따라 다르기 때문에 전화 문의 주시면 견적 드리겠습니다."
 단체예약 시 할인은 얼마나 가능할까요?,현재 단체 할인은 별도로 적용되지 않습니다.
@@ -136,8 +136,7 @@ Can you tell me if the bakery barber on wheels is currently available?,"Currentl
 "4인 가족을 위한 스페셜 서울 시티 팩을 예약하고 싶습니다.
 예약이 가능한가요? 비용은 얼마인가요?",시티팩은 최소 모객인원이 20명 이상이 되야만 진행되는 상품입니다. 현재 같은 날짜에 이 인원의 모객이 어렵기 때문에 현재는 단체에게만 적용되는 상품으로 판매하고 있습니다.
 "I would like to book the special seoul city pack for a family of 4.
-Is it possible to reserve? How much does it cost?","City Packs require a minimum group size of 20 people to be eligible. Currently, it is difficult to gather this number of people on the same date, so we are currently selling it as a product for groups only."
-"
+"Is it possible to reserve? How much does it cost?","City Packs require a minimum group size of 20 people to be eligible. Currently, it is difficult to gather this number of people on the same date, so we are currently selling it as a product for groups only."
 차를 가지고 가려고 하는데 주차할때 있을까요?",저희가 따로 주차장이 구비되어있는 공간은 아닙니다. 근처에 가까운 곳으로는 코리아나 호텔 유료주차장 이용이 가능하십니다.
 "I want to take my car with me, do you have a parking space available?","We do not have our own parking space, but the closest parking is available at the Koreana Hotel paid parking lot."
 Seoul Discovery Pass 이용하는 사람입니다. 혹시 야경코스 탑승권을 당일 말고 하루 전에 수령해도 되나요?,티켓 수령은 이용하는 당일만 교환 가능합니다.
@@ -177,3 +176,4 @@ Is there a minimum number of people to depart?,"There is no minimum number of pa
 When does the night view course depart?,"The Night View Course departure time: From January 01st to April 15th: Departure at 19:00. From April 16th to September 15th: Departure at 19:30. From September 16th to December 31st: Departure at 19:00."
 Is it possible to make a reservation for the same day?,"The daytime courses(TOUR01) can be purchased on-site on a first-come, first-served basis. For the night view course, please contact the customer center (02-777-6090). Online reservations on the very day are not available."
 What is your Cancellation or Refund policy?,"Cancellation / Refund Information: Cancellation fee will be charged from 2 days before boarding, and if payment was made by bank transfer, refunds are only possible via a call to our customer center(+82-2-777-6090). 100% refund of fare if canceled 3 days before boarding date. 90% refund of fare if canceled 2 days before boarding date. 80% refund of fare if canceled 1 day before the boarding date. 70% refund in case of cancellation on the day of boarding (However, the Night View Tour cannot be refundable if canceled after PM 12:00 on the same day)."
+"버스에 휠체어가 탑승할 수 있나요?","휠체어를 버스에 가져갈 수 있습니다. 폴딩형 휠체어는 1층에 묶어두고 2층으로 이동해서 이용할 수 있습니다. 하지만, 휠체어로 탑승은 1층에서만 가능하며 2층에서는 불가능합니다."

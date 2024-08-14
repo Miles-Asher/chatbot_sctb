@@ -7,12 +7,14 @@ import urllib.request
 import json
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
+from langdetect import detect
 from sentence_transformers import SentenceTransformer
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.agents import AgentExecutor, tool
 from langchain_openai import ChatOpenAI
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
+from langchain.agents.format_scratchpad.openai_tools import format_to_openai_tool_messages
 from langchain.agents.format_scratchpad.openai_tools import (
     format_to_openai_tool_messages,
 )
@@ -103,18 +105,80 @@ urls_to_scrape = [
 
 
 # Get available API fields for prompt reference
-def get_available_fields():
-    """Retrieve and return the available fields from the API."""
+def get_available_fields_with_embeddings():
     api_url = "https://api.seoulcitybus.com/extend_allience_all_json.php"
     response = requests.get(api_url)
     
     if response.status_code == 200:
         data = response.json()
         if len(data) > 0:
-            return list(data[0].keys())
-    return []
+            fields = list(data[0].keys())
+            field_embeddings = {field: model.encode(field) for field in fields}
+            return fields, field_embeddings
+    return [], {}
 
-# print(get_available_fields())
+# Function to intelligently map user queries to the most appropriate fields
+def intelligent_field_mapping(field_query):
+    # Common mappings for user intents to specific fields
+    field_mappings = {
+        "close": "open_time",
+        "closing": "open_time",
+        "closing time": "open_time",
+        "closed": "open_time",
+        "open": "open_time",
+        "hours": "open_time",
+        "when does": "open_time",
+        "where": "address",
+        "location": "address",
+        "address": "address",
+        "menu": "menu_list",
+        "information": "info",
+        "details": "info",
+        "about": "info",
+        "coordinates": "loc",
+        "lat": "loc",
+        "longitude": "loc",
+        "latitude": "loc",
+        "phone": "tel",
+        "contact": "tel",
+        "website": "website"
+    }
+
+    # Check for exact or partial matches
+    for key, mapped_field in field_mappings.items():
+        if key in field_query.lower():
+            return mapped_field
+    return None
+
+# Function to find the closest field match based on similarity
+def find_closest_field(query, available_fields, field_embeddings):
+    query_embedding = model.encode(query)
+    similarities = {field: np.dot(query_embedding, embedding) / (np.linalg.norm(query_embedding) * np.linalg.norm(embedding))
+                    for field, embedding in field_embeddings.items()}
+    closest_field = max(similarities, key=similarities.get)
+    return closest_field
+
+# Function to query the API dynamically based on user input
+def query_api_for_field(name, field):
+    api_url = "https://api.seoulcitybus.com/extend_allience_all_json.php"
+    response = requests.get(api_url)
+
+    if response.status_code == 200:
+        data = response.json()
+        for item in data:
+            name_data = item.get("name", {})
+            if any(name.lower() in name_value.lower() for name_value in name_data.values()):
+                # Search for the field dynamically
+                for key, value in item.items():
+                    if field.lower() in key.lower():
+                        if isinstance(value, dict):
+                            # If the value is a dictionary, return the English entry if available
+                            return value.get('en')
+                        return value
+                return f"Field '{field}' not found for '{name_data.get('en', 'the location')}'."
+        return f"'{name}' not found in the data."
+    else:
+        return "Failed to retrieve data from the API."
 
 
 # Define the tool functions
@@ -130,54 +194,71 @@ def website_tool(query: str):
     compiled_content = compile_website_content(urls_to_scrape, query, model)
     return compiled_content if compiled_content else "No relevant information found on websites."
 
-# @tool
-# def business_inquiry_tool(query: str):
-#     """Query the API to provide detailed information about a specific business."""
-#     with urllib.request.urlopen('https://api.seoulcitybus.com/extend_allience_all_json.php') as url:
-#         data = json.load(url)
-    
-#     query_lower = query.lower()
-
-#     for item in data:
-#         if 'name' in item and query_lower in item['name'].lower():
-#             info = item.get('info', 'No detailed information available')
-#             address = item.get('address', 'Address not provided')
-#             hours = item.get('hours', 'Hours not provided')
-#             return f"{item['name']} is {info}. It is located at {address} and is open from {hours}. Would you like to know more?"
-    
-#     return "No relevant information found about the specific business in the API."
-
 @tool
 def recommendation_tool(query: str):
     """
     Provide a list of recommendations based on business categories.
+    When this tool is used, prompt the user to ask for more specific information about anything in the list of recommendations.
     """
+
+    # Load available categories from the API
     with urllib.request.urlopen('https://api.seoulcitybus.com/extend_allience_all_json.php') as url:
         data = json.load(url)
-    
-    query_lower = query.lower().rstrip('s')
+
+    # Extract unique categories (for both cate1_name and cate2_name fields)
+    categories = set()
+    for item in data:
+        for cate_field in ['cate1_name', 'cate2_name']:
+            cate_dict = item.get(cate_field, {})
+            if isinstance(cate_dict, dict):
+                categories.update(cate_dict.values())
+
+    # Encode the query and categories
+    query_embedding = model.encode(query)
+    category_embeddings = {category: model.encode(category) for category in categories}
+
+    # Compute similarities
+    similarities = {category: np.dot(query_embedding, embedding) / (np.linalg.norm(query_embedding) * np.linalg.norm(embedding))
+                    for category, embedding in category_embeddings.items()}
+
+    # Find the best matching category
+    best_category = max(similarities, key=similarities.get)
+    print(f"Best matching category: {best_category}")
+
+    # Use the best matching category for recommendation
+    query_lower = best_category.lower().rstrip('s')
 
     recommendations = []
     for item in data:
         for cate_field in ['cate1_name', 'cate2_name']:
-            # Get the category field value, which is expected to be a dictionary
             cate_dict = item.get(cate_field, {})
             if isinstance(cate_dict, dict):
-                # Check all language variations within the dictionary
                 for lang, value in cate_dict.items():
                     if isinstance(value, str) and query_lower in value.lower():
                         recommendations.append(item['name']['en'])
-                        break  # No need to check the other languages if a match is found
+                        break
 
     if recommendations:
         rec_list = ', '.join(recommendations[:5])  # Limit to 5 recommendations for brevity
-        return f"Here are some recommended {query}: {rec_list}. Which one would you like to know more about?"
-    
+        return rec_list
+
     return "No relevant recommendations found in the API."
 
+@tool
+def business_inquiry_tool(name: str, field_query: str) -> str:
+    """Search the Seoul City Bus API and return relevant data based on the business name and desired field."""
+    available_fields, field_embeddings = get_available_fields_with_embeddings()
     
+    # First, attempt to intelligently map the field query
+    mapped_field = intelligent_field_mapping(field_query)
+    
+    if not mapped_field:
+        # If no intelligent mapping, fall back to closest match by similarity
+        mapped_field = find_closest_field(field_query, available_fields, field_embeddings)
+    
+    return query_api_for_field(name, mapped_field)
 
-tools = [csv_tool, website_tool, recommendation_tool]
+tools = [csv_tool, website_tool, recommendation_tool, business_inquiry_tool]
 tool_names = ", ".join([tool.name for tool in tools])
 chat_history = []
 
@@ -191,13 +272,14 @@ prompt = ChatPromptTemplate.from_messages(
             "and other tourist-related inquiries in Seoul. Your task is to respond to user questions by leveraging available tools "
             "efficiently. Follow this order of operations: \n\n"
             "1. **For inquiries about Seoul City Tour Bus services:**\n"
-            "   - First, try to find relevant information using the CSV tool.\n"
+            "   - First, look for similar questions using the CSV tool.\n"
             "   - If no relevant information is found, use the Website tool to search.\n"
-            # "2. **For inquiries about specific businesses in Seoul:**\n"
-            # "   - Use the Business Inquiry tool to retrieve detailed information.\n"
+            "2. **For inquiries about businesses or attractions other than Seoul City Tour Bus:**\n"
+            "   - Use the Business Inquiry tool to retrieve detailed information.\n"
             "3. **For recommendations of types of businesses or attractions in Seoul:**\n"
             "   - Use the Recommendation tool to suggest relevant options.\n"
             "4. **General guidelines:**\n"
+            "   - Always make sure the response is translated into the language of the query.\n"
             "   - Move to the next tool only if the current tool does not yield relevant information.\n"
             "   - Strive to provide the most accurate and concise information available.\n"
             "   - Log all tool usage and fallback scenarios for future reference."
@@ -256,17 +338,17 @@ def handle_query(query):
 # print(chat_history)
 
 # # **CSV tool test**
-# query = "Can I bring a wheelchair on the bus?"
+# query = "Can I bring luggage onto the tour bus?"
 # response = handle_query(query)
 # print(response)
 
 # # **multilingual CSV tool test**
-# query = "버스에 휠체어를 가져갈 수 있나요?"
+# query = "버스에 휠체어가 탑승할 수 있나요?"
 # response = handle_query(query)
 # print(response)
 
 # # **website tool test**
-# query = "What bus courses are offered?"
+# query = "Is Seoul Station close to Gwanghwamun?"
 # response = handle_query(query)
 # print(response)
 
@@ -276,18 +358,24 @@ def handle_query(query):
 # print(response)
 
 # # **chat memory test**
-# query = "Is the third course currently available?"
+# query = "Is course 3 currently available?"
 # response = handle_query(query)
 # print(response)
 
-# # **recommendation tool test**
-# query = "Recommend me some good tourist attractions."
-# response = handle_query(query)
-# print(response)
+# **recommendation tool test**
+query = "Recommend me landmarks to visit."
+response = handle_query(query)
+print(response)
 
 # # **multilingual recommendation tool test**
-# query = "좋은 카페를 추천해 주세요."
+# query = "맛있는 레스토랑을 추천해 주세요."
 # response = handle_query(query)
 # print(response)
 
+# # **business inquiry tool test**
+# query = "What time does Cafe Coin close?"
+# response = handle_query(query)
+# print(response)
+
+# print("\n\n")
 # print(chat_history)
