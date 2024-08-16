@@ -7,7 +7,7 @@ import urllib.request
 import json
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-from langdetect import detect
+# from langdetect import detect
 from sentence_transformers import SentenceTransformer
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -89,8 +89,8 @@ def compile_website_content(urls, query, model, threshold=0.6):
 
 # List of URLs you want to scrape
 urls_to_scrape = [
-    'https://en.seoulcitybus.com/index.php',
     'https://en.seoulcitybus.com/customer/faq.php',
+    'https://en.seoulcitybus.com/index.php',
     'https://en.seoulcitybus.com/service/tour_course_view.php?code=1',
     'https://en.seoulcitybus.com/service/tour_course_view.php?code=2',
     'https://en.seoulcitybus.com/service/tour_course_view.php?code=3',
@@ -117,39 +117,6 @@ def get_available_fields_with_embeddings():
             return fields, field_embeddings
     return [], {}
 
-# Function to intelligently map user queries to the most appropriate fields
-def intelligent_field_mapping(field_query):
-    # Common mappings for user intents to specific fields
-    field_mappings = {
-        "close": "open_time",
-        "closing": "open_time",
-        "closing time": "open_time",
-        "closed": "open_time",
-        "open": "open_time",
-        "hours": "open_time",
-        "when does": "open_time",
-        "where": "address",
-        "location": "address",
-        "address": "address",
-        "menu": "menu_list",
-        "information": "info",
-        "details": "info",
-        "about": "info",
-        "coordinates": "loc",
-        "lat": "loc",
-        "longitude": "loc",
-        "latitude": "loc",
-        "phone": "tel",
-        "contact": "tel",
-        "website": "website"
-    }
-
-    # Check for exact or partial matches
-    for key, mapped_field in field_mappings.items():
-        if key in field_query.lower():
-            return mapped_field
-    return None
-
 # Function to find the closest field match based on similarity
 def find_closest_field(query, available_fields, field_embeddings):
     query_embedding = model.encode(query)
@@ -173,7 +140,7 @@ def query_api_for_field(name, field):
                     if field.lower() in key.lower():
                         if isinstance(value, dict):
                             # If the value is a dictionary, return the English entry if available
-                            return value.get('en')
+                            return value
                         return value
                 return f"Field '{field}' not found for '{name_data.get('en', 'the location')}'."
         return f"'{name}' not found in the data."
@@ -248,14 +215,12 @@ def recommendation_tool(query: str):
 def business_inquiry_tool(name: str, field_query: str) -> str:
     """Search the Seoul City Bus API and return relevant data based on the business name and desired field."""
     available_fields, field_embeddings = get_available_fields_with_embeddings()
+
+    if("hours" in field_query):
+        field_query = "open_time"
     
-    # First, attempt to intelligently map the field query
-    mapped_field = intelligent_field_mapping(field_query)
-    
-    if not mapped_field:
-        # If no intelligent mapping, fall back to closest match by similarity
-        mapped_field = find_closest_field(field_query, available_fields, field_embeddings)
-    
+    mapped_field = find_closest_field(field_query, available_fields, field_embeddings)
+
     return query_api_for_field(name, mapped_field)
 
 tools = [csv_tool, website_tool, recommendation_tool, business_inquiry_tool]
@@ -275,7 +240,8 @@ prompt = ChatPromptTemplate.from_messages(
             "   - First, look for similar questions using the CSV tool.\n"
             "   - If no relevant information is found, use the Website tool to search.\n"
             "2. **For inquiries about businesses or attractions other than Seoul City Tour Bus:**\n"
-            "   - Use the Business Inquiry tool to retrieve detailed information.\n"
+            "   - Use the Business Inquiry tool to retrieve detailed information about affiliate programs, general information, \n"
+            "     business hours, closure days, contact info, address and location, or menu.\n"
             "3. **For recommendations of types of businesses or attractions in Seoul:**\n"
             "   - Use the Recommendation tool to suggest relevant options.\n"
             "4. **General guidelines:**\n"
@@ -362,10 +328,10 @@ def handle_query(query):
 # response = handle_query(query)
 # print(response)
 
-# **recommendation tool test**
-query = "Recommend me landmarks to visit."
-response = handle_query(query)
-print(response)
+# # **recommendation tool test**
+# query = "What are some good cafes in Seoul?"
+# response = handle_query(query)
+# print(response)
 
 # # **multilingual recommendation tool test**
 # query = "맛있는 레스토랑을 추천해 주세요."
@@ -373,7 +339,12 @@ print(response)
 # print(response)
 
 # # **business inquiry tool test**
-# query = "What time does Cafe Coin close?"
+# query = "when is gyeonbokgung palace open?"
+# response = handle_query(query)
+# print(response)
+
+# # **business inquiry tool test**
+# query = "what days is it closed?"
 # response = handle_query(query)
 # print(response)
 
