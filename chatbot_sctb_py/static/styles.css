@@ -91,7 +91,7 @@ main {
 }
 
 .user-message {
-    text-align: right;
+    text-align: left;
     background-color: #ac1f24;
     color: white;
     border-radius: 15px 15px 0 15px;

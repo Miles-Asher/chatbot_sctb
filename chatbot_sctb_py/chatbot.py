@@ -31,13 +31,63 @@ if not openai_api_key:
 # Setup LangChain model with the OpenAI API key
 llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0, openai_api_key=openai_api_key)
 
+# Load the CSV file into a DataFrame that holds only questions and answers
+csv_file_path = 'data/extracted_qna 1.csv'
+df_csv = pd.read_csv(csv_file_path)
 
-# Load the CSV file
-df = pd.read_csv('data/extracted_qna 1.csv')
-#print(df.head())
+# Create a separate DataFrame for storing embeddings
 model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))
-df.to_pickle('questions_embeddings.pkl')
+df = df_csv.copy()  # Copy the data to a new DataFrame for embedding purposes only
+df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))  # Only df has embeddings, not df_csv
+
+# Function to handle admin corrections
+def correct_answer(question, new_answer, df_csv, csv_file_path):
+    # Add the new question and answer to the CSV DataFrame (without embeddings)
+    new_row_csv = pd.DataFrame({
+        'Question': [question],
+        'Answer': [new_answer]
+    })
+    
+    # Update the original DataFrame that is intended to be saved to CSV
+    df_csv = pd.concat([df_csv, new_row_csv], ignore_index=True)
+
+    # Save the updated DataFrame to the CSV file (without embeddings)
+    df_csv.to_csv(csv_file_path, index=False)
+
+    # Update the embeddings DataFrame
+    global df  # Reference the global df to keep embeddings in memory
+    new_row_embedding = pd.DataFrame({
+        'Question': [question],
+        'Answer': [new_answer],
+        'embeddings': [model.encode(question)]
+    })
+    
+    df = pd.concat([df, new_row_embedding], ignore_index=True)
+
+    return f"The new question and answer have been added: '{question}' -> '{new_answer}'."
+
+
+# Function to process user messages, including the correction functionality
+def process_message(message):
+    # Check if the message is a correction command
+    if message.startswith('/correct'):
+        try:
+            # Expecting format: /correct <question> | <new_answer>
+            _, qa_pair = message.split(' ', 1)
+            question, new_answer = qa_pair.split('|', 1)
+            question = question.strip()
+            new_answer = new_answer.strip()
+            return correct_answer(question, new_answer, df_csv, 'data/extracted_qna 1.csv')
+        except ValueError:
+            return "Incorrect command format. Use: /correct <question> | <new_answer>"
+
+    # Normal query processing
+    response = find_similar_question(message, df, model)
+    if response:
+        return response
+    else:
+        return llm(message)
+    
 
 # Function to search for similar questions to query
 def find_similar_question(query, df, model, threshold=0.8):
@@ -244,9 +294,12 @@ prompt = ChatPromptTemplate.from_messages(
             "     business hours, closure days, contact info, address and location, or menu.\n"
             "3. **For recommendations of types of businesses or attractions in Seoul:**\n"
             "   - Use the Recommendation tool to suggest relevant options.\n"
-            "4. **General guidelines:**\n"
+            "4. **Correction of Information:**\n"
+            "   - If a message starts with '/correct', treat it as a command to update the knowledge base. Process the correction "
+            "     using the correct_answer function and ensure future responses reflect the corrected information.\n"
+            "5. **General guidelines:**\n"
             "   - Always make sure the response is translated into the language of the query.\n"
-            "   - Move to the next tool only if the current tool does not yield relevant information.\n"
+            "   - Only use a second tool if the current tool does not yield any relevant information.\n"
             "   - Strive to provide the most accurate and concise information available.\n"
             "   - Log all tool usage and fallback scenarios for future reference."
         ),
@@ -255,6 +308,7 @@ prompt = ChatPromptTemplate.from_messages(
         MessagesPlaceholder(variable_name="agent_scratchpad"), 
     ]
 )
+
 
 
 llm_with_tools = llm.bind_tools(tools)
@@ -276,77 +330,34 @@ agent = (
 
 # Function to handle queries
 def handle_query(query):
-    # Prepare the input dictionary with the necessary variables
-    input_dict = {
-        "input": query,
-        "chat_history": chat_history,
-        "agent_scratchpad": "",  # Initialize with an empty scratchpad if necessary
-    }
+    # Check if the query is a correction command
+    if query.startswith('/correct'):
+        # Process the correction
+        response = process_message(query)
+    else:
+        # Prepare the input dictionary with the necessary variables
+        input_dict = {
+            "input": query,
+            "chat_history": chat_history,
+            "agent_scratchpad": "",  # Initialize with an empty scratchpad if necessary
+        }
+        
+        # Create the AgentExecutor with the updated input dictionary
+        agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+        
+        # Invoke the agent with the correct input dictionary
+        response = agent_executor.invoke(input_dict)
+        
+        # Update chat history with the current interaction
+        chat_history.extend(
+            [
+                HumanMessage(content=query),
+                AIMessage(content=response["output"]),
+            ]
+        )
     
-    # Create the AgentExecutor with the updated input dictionary
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-    
-    # Invoke the agent with the correct input dictionary
-    response = agent_executor.invoke(input_dict)
-    
-    # Update chat history with the current interaction
-    chat_history.extend(
-        [
-            HumanMessage(content=query),
-            AIMessage(content=response["output"]),
-        ]
-    )
+    return response if isinstance(response, str) else response['output']
 
-    return response['output']
-
-# *****Example usage*****
-
-# print(chat_history)
-
-# # **CSV tool test**
-# query = "Can I bring luggage onto the tour bus?"
-# response = handle_query(query)
-# print(response)
-
-# # **multilingual CSV tool test**
-# query = "버스에 휠체어가 탑승할 수 있나요?"
-# response = handle_query(query)
-# print(response)
-
-# # **website tool test**
-# query = "Is Seoul Station close to Gwanghwamun?"
-# response = handle_query(query)
-# print(response)
-
-# # **multilingual website tool test**
-# query = "어떤 버스 코스가 제공되나요?"
-# response = handle_query(query)
-# print(response)
-
-# # **chat memory test**
-# query = "Is course 3 currently available?"
-# response = handle_query(query)
-# print(response)
-
-# # **recommendation tool test**
-# query = "What are some good cafes in Seoul?"
-# response = handle_query(query)
-# print(response)
-
-# # **multilingual recommendation tool test**
-# query = "맛있는 레스토랑을 추천해 주세요."
-# response = handle_query(query)
-# print(response)
-
-# # **business inquiry tool test**
-# query = "when is gyeonbokgung palace open?"
-# response = handle_query(query)
-# print(response)
-
-# # **business inquiry tool test**
-# query = "what days is it closed?"
-# response = handle_query(query)
-# print(response)
-
-# print("\n\n")
-# print(chat_history)
+def clear_chat_history():
+    global chat_history
+    chat_history.clear()

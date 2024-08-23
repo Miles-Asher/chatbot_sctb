@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", function() {
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
-    const clearButton = document.getElementById('clear-button');
     const chatLog = document.getElementById('chat-log');
     const questionDropdown = document.getElementById('question-dropdown');
     const profileImageUrl = document.body.getAttribute('data-profile-url');
@@ -10,7 +9,7 @@ document.addEventListener("DOMContentLoaded", function() {
     userInput.focus();
 
     sendButton.addEventListener('click', sendMessage);
-    clearButton.addEventListener('click', clearChatHistory);
+    document.getElementById("clear-button").addEventListener("click", clearChatHistory);
     userInput.addEventListener('keydown', function(event) {
         if (event.key === 'Enter') {
             sendMessage();
@@ -34,7 +33,9 @@ document.addEventListener("DOMContentLoaded", function() {
 
         addMessage(message, 'user-message', true);
         toggleInput(false);
-        setTimeout(() => {addTypingIndicator(); }, 250);
+        if (!message.includes('/correct')) {
+            setTimeout(() => {addTypingIndicator(); }, 250);
+        }
 
         userInput.value = ''; // Clear the input box
 
@@ -59,6 +60,7 @@ document.addEventListener("DOMContentLoaded", function() {
             userInput.focus();    // Focus the input box
             saveChatHistory();
         }
+        
     }
 
     function addMessage(message, className, animate = false) {
@@ -137,16 +139,36 @@ document.addEventListener("DOMContentLoaded", function() {
 
     function clearChatHistory() {
         const messages = chatLog.querySelectorAll('.chat-message');
+        
         messages.forEach((message, index) => {
             message.classList.add('fade-out');
             message.addEventListener('animationend', () => {
                 message.remove();
+                
                 if (index === messages.length - 1) {
                     chatLog.innerHTML = '';
                     localStorage.removeItem('chatLog');
-                    userInput.focus();
+    
+                    // Send a request to the server to clear the chat history
+                    fetch('/clear_history', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    }).then(response => {
+                        return response.json();
+                    }).then(data => {
+                        if (data.success) {
+                            console.log("Chat history successfully cleared on the server."); // Success log
+                        } else {
+                            console.log("Failed to clear chat history on the server."); // Error log
+                        }
+                    }).catch(error => {
+                        console.error('Error clearing chat history on the server:', error); // Error handling log
+                    });
                 }
             });
         });
-    }
+        userInput.focus();
+    }   
 });
