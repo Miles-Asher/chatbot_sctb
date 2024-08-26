@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,8 +13,24 @@
             <h1>Chat with Seoul City Tour Bus</h1>
         </div>
     </header>
+
+    <button id="chatbot-button">
+        <img src="{{ url_for('static', filename='chat-icon.png') }}" alt="Chat Icon" id="chat-icon">
+    </button>    
+
     <main>
         <div class="chat-container">
+            <!-- Language selection dropdown -->
+            <div class="language-dropdown">
+                <img src="{{ url_for('static', filename='language-icon.png') }}" alt="Language" id="language-icon">
+                <div class="dropdown-content" id="dropdown-content">
+                    <a href="#" onclick="changeLanguage('ko')">KO</a>
+                    <a href="#" onclick="changeLanguage('en')">EN</a>
+                    <a href="#" onclick="changeLanguage('ja')">JA</a>
+                    <a href="#" onclick="changeLanguage('zh')">ZH</a>
+                </div>
+            </div>
+            <!-- Existing chat elements -->
             <select id="question-dropdown">
                 <option value="">Select an FAQ...</option>
                 <option value="Where do I get on the bus?">Where do I get on the bus?</option>

@@ -42,8 +42,10 @@ main {
     margin: 20px;
     display: flex;
     flex-direction: column;
-    height: 600px; /* Set a fixed height for the chat container */
-    position: relative; /* To position the pseudo-element correctly */
+    height: 700px; /* Set a fixed height for the chat container */
+    position: relative; /* To position elements like the language dropdown correctly */
+    z-index: 1000;
+    display: none; /* Initially hide the chat container */
 }
 
 .chat-container::before {
@@ -126,7 +128,9 @@ main {
 }
 
 .message-content {
-    max-width: calc(100% - 50px); /* Adjust max-width considering the image width and margin */
+    display: inline-block; /* Keep content inline */
+    vertical-align: middle; /* Ensure vertical alignment is correct */
+    line-height: 1.5; /* Adjust line-height for readability */
 }
 
 /* Timestamp styling */
@@ -150,6 +154,7 @@ main {
     border-radius: 5px;
     font-size: 13px;
     margin-bottom: 10px;
+    margin-top: 25px;
     width: 100%;
     background-color: white; /* Set background color */
     color: #333; /* Set text color */
@@ -160,6 +165,8 @@ main {
     background-position: right 10px center;
     background-size: 10px;
     cursor: pointer; /* Add pointer cursor */
+    z-index: 999;
+    position: relative;
 }
 
 #question-dropdown option {
@@ -171,6 +178,53 @@ main {
 /* Add hover effect to dropdown options */
 #question-dropdown option:hover {
     background-color: #f1f1f1; /* Change background on hover */
+}
+
+/* Language dropdown container inside chat container */
+.language-dropdown {
+    position: absolute;
+    top: 10px;
+    right: 20px;
+    display: inline-block;
+    z-index: 1002;
+}
+
+/* Language icon */
+.language-dropdown img {
+    width: 30px;
+    cursor: pointer;
+}
+
+/* Dropdown content (hidden by default) */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: white;
+    min-width: 60px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1003;
+    right: 0;
+    border-radius: 5px;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+    color: black;
+    padding: 8px 12px;
+    font-size: 12px;
+    text-decoration: none;
+    display: block;
+    text-align: center;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
+/* Show the dropdown content when the language icon is hovered */
+.language-dropdown:hover .dropdown-content {
+    display: block;
 }
 
 /* Chat input container styling */
@@ -214,11 +268,32 @@ main {
 
 .typing-indicator .message-content {
     font-style: italic;
-    line-height: .3; /* Adjust line height to reduce bubble height */
+    line-height: 1.2; /* Ensure line height is appropriate for the font */
+    letter-spacing: normal; /* Ensure normal letter spacing */
+    word-spacing: normal; /* Ensure normal word spacing */
     margin-bottom: 0;
+    white-space: nowrap; /* Prevent text wrapping */
+    display: inline-block; /* Keep the text inline */
 }
 
+#chatbot-button {
+    position: fixed; /* Fixed position on the page */
+    bottom: 80px; /* 20px from the bottom */
+    right: 20px; /* 20px from the right */
+    background-color: #ac1f24; /* Same color as the header for consistency */
+    padding: 15px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* Ensure it's above other content */
+}
 
+#chatbot-button img {
+    width: 24px; /* Adjust the size of the icon */
+    height: 24px;
+    vertical-align: middle; /* Align icon vertically */
+}
 
 /* Footer styling */
 footer {
@@ -263,3 +338,5 @@ footer {
 .fade-out {
     animation: fade-out 0.5s forwards;
 }
+
+
