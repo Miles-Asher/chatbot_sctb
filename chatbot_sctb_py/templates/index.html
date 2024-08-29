@@ -24,10 +24,18 @@
             <div class="language-dropdown">
                 <img src="{{ url_for('static', filename='language-icon.png') }}" alt="Language" id="language-icon">
                 <div class="dropdown-content" id="dropdown-content">
-                    <a href="#" onclick="changeLanguage('ko')">KO</a>
-                    <a href="#" onclick="changeLanguage('en')">EN</a>
-                    <a href="#" onclick="changeLanguage('ja')">JA</a>
-                    <a href="#" onclick="changeLanguage('zh')">ZH</a>
+                    <a href="#" onclick="changeLanguage('ko')">
+                        <img src="{{ url_for('static', filename='flags/kr.png') }}" alt="Korean Flag" class="flag-icon"> KO
+                    </a>
+                    <a href="#" onclick="changeLanguage('en')">
+                        <img src="{{ url_for('static', filename='flags/en.png') }}" alt="English Flag" class="flag-icon"> EN
+                    </a>
+                    <a href="#" onclick="changeLanguage('ja')">
+                        <img src="{{ url_for('static', filename='flags/jp.png') }}" alt="Japanese Flag" class="flag-icon"> JA
+                    </a>
+                    <a href="#" onclick="changeLanguage('zh')">
+                        <img src="{{ url_for('static', filename='flags/ch.png') }}" alt="Chinese Flag" class="flag-icon"> ZH
+                    </a>
                 </div>
             </div>
             <!-- Existing chat elements -->
