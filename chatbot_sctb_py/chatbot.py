@@ -7,7 +7,6 @@ import urllib.request
 import json
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-# from langdetect import detect
 from sentence_transformers import SentenceTransformer
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -87,24 +86,51 @@ def process_message(message):
         return response
     else:
         return llm(message)
+
+#Enhance similarity score based on the presence of important keywords.
+important_keywords = [
+    "reservation", "booking", "advance", "same day", 
+    "hours", "open", "close", "departure", "schedule", "operating", 
+    "wheelchair", "ramp", "disabled", 
+    "discount", "price", "fare", "free", 
+    "cancellation", "refund", "policy", 
+    "weather", "rain", "storm", "snow", 
+    "bus type", "stops", "route", "tour", "course", 
+    "Namsan", "Gwanghwamun", "Palace", 
+    "ticket", "luggage", "stroller"
+]
+
+def enhance_similarity_with_keywords(query, candidate_question, base_similarity):
+    for keyword in important_keywords:
+        if keyword in query and keyword in candidate_question:
+            base_similarity += 0.05  # Slightly boost similarity
+    return base_similarity
+
+#Function to find a semantically similar question or an exact match.
+def find_similar_question(query, df, model, high_threshold=0.9, low_threshold=0.75):
+    # Step 1: Exact match check
+    exact_match = df[df['Question'].str.lower() == query.lower()]
+    if not exact_match.empty:
+        return exact_match['Answer'].iloc[0]
     
-
-# Function to search for similar questions to query
-def find_similar_question(query, df, model, threshold=0.8):
+    # Step 2: Semantic search with high threshold
     query_embedding = model.encode(query)
-
     df['similarity'] = df['embeddings'].apply(lambda x: np.dot(query_embedding, x) / (np.linalg.norm(query_embedding) * np.linalg.norm(x)))
 
+    # Get the most similar question
+    df['similarity'] = df.apply(lambda row: enhance_similarity_with_keywords(query.lower(), row['Question'].lower(), row['similarity']), axis=1)
     similar_question = df.loc[df['similarity'].idxmax()]
-    print(f"Similarity score: {similar_question['similarity']}")
-    print(f"Similar question: {similar_question['Question']}")
 
-    if similar_question['similarity'] >= threshold:
+    # Step 3: Check with high threshold
+    if similar_question['similarity'] >= high_threshold:
         return similar_question['Answer']
-    else:
-        return None
+
+    # Step 4: Check with lower threshold as a fallback
+    if similar_question['similarity'] >= low_threshold:
+        return similar_question['Answer']
     
-df = pd.read_pickle('questions_embeddings.pkl')
+    # Step 5: Fallback to None if no sufficient match is found
+    return None
 
 
 # Function to load data from URL
@@ -287,10 +313,10 @@ prompt = ChatPromptTemplate.from_messages(
             "and other tourist-related inquiries in Seoul. Your task is to respond to user questions by leveraging available tools "
             "efficiently. Follow this order of operations: \n\n"
             "1. **For inquiries about Seoul City Tour Bus services:**\n"
-            "   - First, look for similar questions using the CSV tool.\n"
+            "   - First, look for similar questions using the CSV tool. Query should be in the language of the user question.\n"
             "   - If no relevant information is found, use the Website tool to search.\n"
             "2. **For inquiries about businesses or attractions other than Seoul City Tour Bus:**\n"
-            "   - Use the Business Inquiry tool to retrieve detailed information about affiliate programs, general information, \n"
+            "   - Use the Business Inquiry tool to retrieve detailed information about affiliate programs, general information,\n"
             "     business hours, closure days, contact info, address and location, or menu.\n"
             "3. **For recommendations of types of businesses or attractions in Seoul:**\n"
             "   - Use the Recommendation tool to suggest relevant options.\n"
@@ -298,7 +324,8 @@ prompt = ChatPromptTemplate.from_messages(
             "   - If a message starts with '/correct', treat it as a command to update the knowledge base. Process the correction "
             "     using the correct_answer function and ensure future responses reflect the corrected information.\n"
             "5. **General guidelines:**\n"
-            "   - Always make sure the response is translated into the language of the query.\n"
+            "   - Query tools with the exact question asked.\n"
+            "   - Always translate response into the language of the original user question.\n"
             "   - Only use a second tool if the current tool does not yield any relevant information.\n"
             "   - Strive to provide the most accurate and concise information available.\n"
             "   - Log all tool usage and fallback scenarios for future reference."
