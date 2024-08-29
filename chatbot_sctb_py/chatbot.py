@@ -40,7 +40,10 @@ df = df_csv.copy()  # Copy the data to a new DataFrame for embedding purposes on
 df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))  # Only df has embeddings, not df_csv
 
 # Function to handle admin corrections
-def correct_answer(question, new_answer, df_csv, csv_file_path):
+def correct_answer(question, new_answer, csv_file_path):
+    global df_csv
+    global df
+
     # Add the new question and answer to the CSV DataFrame (without embeddings)
     new_row_csv = pd.DataFrame({
         'Question': [question],
@@ -53,15 +56,12 @@ def correct_answer(question, new_answer, df_csv, csv_file_path):
     # Save the updated DataFrame to the CSV file (without embeddings)
     df_csv.to_csv(csv_file_path, index=False)
 
+    # Reload the CSV file to ensure it's up-to-date
+    df_csv = pd.read_csv(csv_file_path)
+
     # Update the embeddings DataFrame
-    global df  # Reference the global df to keep embeddings in memory
-    new_row_embedding = pd.DataFrame({
-        'Question': [question],
-        'Answer': [new_answer],
-        'embeddings': [model.encode(question)]
-    })
-    
-    df = pd.concat([df, new_row_embedding], ignore_index=True)
+    df = df_csv.copy()  # Copy the data to a new DataFrame for embedding purposes only
+    df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))  # Only df has embeddings, not df_csv
 
     return f"The new question and answer have been added: '{question}' -> '{new_answer}'."
 
@@ -76,7 +76,7 @@ def process_message(message):
             question, new_answer = qa_pair.split('|', 1)
             question = question.strip()
             new_answer = new_answer.strip()
-            return correct_answer(question, new_answer, df_csv, 'data/extracted_qna 1.csv')
+            return correct_answer(question, new_answer, 'data/extracted_qna 1.csv')
         except ValueError:
             return "Incorrect command format. Use: /correct <question> | <new_answer>"
 
