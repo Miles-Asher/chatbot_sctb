@@ -218,8 +218,8 @@ def query_api_for_field(name, field):
                             # If the value is a dictionary, return the English entry if available
                             return value
                         return value
-                return f"Field '{field}' not found for '{name_data.get('en', 'the location')}'."
-        return f"'{name}' not found in the data."
+                #return f"Field '{field}' not found for '{name_data.get('en', 'the location')}'."
+        #return f"'{name}' not found in the data."
     else:
         return "Failed to retrieve data from the API."
 
@@ -357,7 +357,6 @@ agent = (
 
 # Function to handle queries
 def handle_query(query):
-    # Check if the query is a correction command
     if query.startswith('/correct'):
         # Process the correction
         response = process_message(query)
@@ -375,15 +374,22 @@ def handle_query(query):
         # Invoke the agent with the correct input dictionary
         response = agent_executor.invoke(input_dict)
         
+        # Check if the response contains "No relevant information found"
+        if "i couldn't find" in response["output"].lower():
+            response['output'] = (llm.invoke(query)).content
+            
         # Update chat history with the current interaction
         chat_history.extend(
             [
                 HumanMessage(content=query),
-                AIMessage(content=response["output"]),
+                AIMessage(content=response["output"] if isinstance(response, dict) else response),
             ]
         )
     
     return response if isinstance(response, str) else response['output']
+
+
+
 
 def clear_chat_history():
     global chat_history
