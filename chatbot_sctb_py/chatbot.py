@@ -1,4 +1,3 @@
-#import csv
 import os
 import requests
 import pandas as pd
@@ -14,9 +13,6 @@ from langchain.agents import AgentExecutor, tool
 from langchain_openai import ChatOpenAI
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 from langchain.agents.format_scratchpad.openai_tools import format_to_openai_tool_messages
-from langchain.agents.format_scratchpad.openai_tools import (
-    format_to_openai_tool_messages,
-)
 
 
 # Load the OpenAI API key from environment variable
@@ -387,8 +383,6 @@ def handle_query(query):
         )
     
     return response if isinstance(response, str) else response['output']
-
-
 
 
 def clear_chat_history():
