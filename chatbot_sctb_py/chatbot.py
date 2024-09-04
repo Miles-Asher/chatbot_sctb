@@ -14,6 +14,14 @@ from langchain_openai import ChatOpenAI
 from langchain.agents.output_parsers.openai_tools import OpenAIToolsAgentOutputParser
 from langchain.agents.format_scratchpad.openai_tools import format_to_openai_tool_messages
 
+# Lazy loading model
+_model = None
+
+def get_model():
+    global _model
+    if _model is None:
+        _model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+    return _model
 
 # Load the OpenAI API key from environment variable
 load_dotenv()
@@ -31,9 +39,20 @@ csv_file_path = 'data/extracted_qna 1.csv'
 df_csv = pd.read_csv(csv_file_path)
 
 # Create a separate DataFrame for storing embeddings
-model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 df = df_csv.copy()  # Copy the data to a new DataFrame for embedding purposes only
-df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))  # Only df has embeddings, not df_csv
+
+# Lazy loading embeddings
+def get_embeddings():
+    global df  # Ensure we are using the global df
+    model = get_model()
+    
+    # If 'embeddings' column does not exist, create it
+    if 'embeddings' not in df.columns or df['embeddings'].isnull().all():
+        print("Generating embeddings for the dataset...")
+        df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))
+    
+    return df
+
 
 # Function to handle admin corrections
 def correct_answer(question, new_answer, csv_file_path):
@@ -57,12 +76,11 @@ def correct_answer(question, new_answer, csv_file_path):
 
     # Update the embeddings DataFrame
     df = df_csv.copy()  # Copy the data to a new DataFrame for embedding purposes only
-    df['embeddings'] = df['Question'].apply(lambda x: model.encode(x))  # Only df has embeddings, not df_csv
+    df['embeddings'] = df['Question'].apply(lambda x: get_model().encode(x))  # Only df has embeddings, not df_csv
 
     return f"The new question and answer have been added: '{question}' -> '{new_answer}'."
 
-
-# Function to process user messages, including the correction functionality
+# Function to process user messages
 def process_message(message):
     # Check if the message is a correction command
     if message.startswith('/correct'):
@@ -77,11 +95,12 @@ def process_message(message):
             return "Incorrect command format. Use: /correct <question> | <new_answer>"
 
     # Normal query processing
-    response = find_similar_question(message, df, model)
+    response = find_similar_question(message, get_embeddings(), get_model())
     if response:
         return response
     else:
         return llm(message)
+
 
 #Enhance similarity score based on the presence of important keywords.
 important_keywords = [
@@ -103,7 +122,10 @@ def enhance_similarity_with_keywords(query, candidate_question, base_similarity)
     return base_similarity
 
 #Function to find a semantically similar question or an exact match.
-def find_similar_question(query, df, model, high_threshold=0.9, low_threshold=0.75):
+def find_similar_question(query, df, model=None, high_threshold=0.9, low_threshold=0.75):
+    model = model or get_model()  # Ensure model is loaded if not passed
+    df = get_embeddings()  # Ensure embeddings are generated
+    
     # Step 1: Exact match check
     exact_match = df[df['Question'].str.lower() == query.lower()]
     if not exact_match.empty:
@@ -130,8 +152,8 @@ def find_similar_question(query, df, model, high_threshold=0.9, low_threshold=0.
 
 
 # Function to load data from URL
-def compile_website_content(urls, query, model, threshold=0.6):
-
+def compile_website_content(urls, query, model=None, threshold=0.6):
+    model = model or get_model()  # Ensure model is loaded
     query_embedding = model.encode(query)
 
     for url in urls:
@@ -175,9 +197,9 @@ urls_to_scrape = [
     # Add more URLs as needed
 ]
 
-
 # Get available API fields for prompt reference
 def get_available_fields_with_embeddings():
+    model = get_model()  # Ensure model is loaded
     api_url = "https://api.seoulcitybus.com/extend_allience_all_json.php"
     response = requests.get(api_url)
     
@@ -191,7 +213,7 @@ def get_available_fields_with_embeddings():
 
 # Function to find the closest field match based on similarity
 def find_closest_field(query, available_fields, field_embeddings):
-    query_embedding = model.encode(query)
+    query_embedding = get_model().encode(query)
     similarities = {field: np.dot(query_embedding, embedding) / (np.linalg.norm(query_embedding) * np.linalg.norm(embedding))
                     for field, embedding in field_embeddings.items()}
     closest_field = max(similarities, key=similarities.get)
@@ -214,8 +236,6 @@ def query_api_for_field(name, field):
                             # If the value is a dictionary, return the English entry if available
                             return value
                         return value
-                #return f"Field '{field}' not found for '{name_data.get('en', 'the location')}'."
-        #return f"'{name}' not found in the data."
     else:
         return "Failed to retrieve data from the API."
 
@@ -224,13 +244,13 @@ def query_api_for_field(name, field):
 @tool
 def csv_tool(query: str):
     """Query the CSV file for pre-answered questions"""
-    answer = find_similar_question(query, df, model)
+    answer = find_similar_question(query, df, get_model())
     return answer if answer else "No relevant information found in CSV."
 
 @tool
 def website_tool(query: str):
     """Query websites for information"""
-    compiled_content = compile_website_content(urls_to_scrape, query, model)
+    compiled_content = compile_website_content(urls_to_scrape, query, get_model())
     return compiled_content if compiled_content else "No relevant information found on websites."
 
 @tool
@@ -253,8 +273,8 @@ def recommendation_tool(query: str):
                 categories.update(cate_dict.values())
 
     # Encode the query and categories
-    query_embedding = model.encode(query)
-    category_embeddings = {category: model.encode(category) for category in categories}
+    query_embedding = get_model().encode(query)
+    category_embeddings = {category: get_model().encode(category) for category in categories}
 
     # Compute similarities
     similarities = {category: np.dot(query_embedding, embedding) / (np.linalg.norm(query_embedding) * np.linalg.norm(embedding))
@@ -332,8 +352,6 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-
-
 llm_with_tools = llm.bind_tools(tools)
 
 # Create the ReAct agent with tools
@@ -349,7 +367,6 @@ agent = (
     | llm_with_tools
     | OpenAIToolsAgentOutputParser()
 )
-
 
 # Function to handle queries
 def handle_query(query):
