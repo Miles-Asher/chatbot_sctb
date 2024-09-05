@@ -321,7 +321,7 @@ prompt = ChatPromptTemplate.from_messages(
             "     using the correct_answer function and ensure future responses reflect the corrected information.\n"
             "5. **General guidelines:**\n"
             "   - Query tools with the exact question asked.\n"
-            "   - Always translate response into the language of the original user question.\n"
+            "   - Always ensure response is in the same language as the original user question.\n"
             "   - Only use a second tool if the current tool does not yield any relevant information.\n"
             "   - Strive to provide the most accurate and concise information available.\n"
             "   - Log all tool usage and fallback scenarios for future reference."
