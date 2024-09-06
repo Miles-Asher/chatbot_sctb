@@ -1,0 +1,3 @@
+{"answer":"You can board the Seoul City Tour Bus after exchanging the physical ticket at the ticket box in Gwanghwamun. The address for the Gwanghwamun Ticket Office is 68-2 Taepyeong-ro 1-ga, Jung-gu, Seoul. It is located nearby Gwanghwamun Station Intersection, Dongwha Duty Free Shop, or Koreana Hotel. You can reach the ticket office by subway, which is 100m from Exit 6 of Gwanghwamun Station on Line 5 or 300m from Exit 3 of City Hall Station on Subway Lines 1 and 2."}
+{"answer":"Hello! How can I assist you today?"}
+{"answer":"Bus seats on the Seoul City Tour Bus are not assigned. Passengers can choose any available seat on a first-come, first-served basis."}

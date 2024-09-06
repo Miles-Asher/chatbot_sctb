@@ -207,13 +207,14 @@ document.addEventListener("DOMContentLoaded", function() {
         userInput.value = ''; // Clear the input box
     
         try {
-            const response = await fetch('/chat', {
-                method: 'POST',
+            const response = await fetch("chat.php", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json'
+                    "Content-Type": "application/x-www-form-urlencoded",
                 },
-                body: JSON.stringify({ message })
-            });
+                body: `message=${encodeURIComponent(message)}`
+            })
+            ;
             
             const data = await response.json();
             removeTypingIndicator();
