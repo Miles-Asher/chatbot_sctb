@@ -37,7 +37,7 @@ This chatbot can also be integrated into other web and mobile applications using
   
 ### Frontend
 - **HTML, CSS, JavaScript:** Used for the built-in chatbot UI
-- **PHP (optional):** Example implementation included for web pages.
+- **PHP (optional):** Example implementation included for web pages found in ./chatbot_sctb_php/
 
 ---
 
