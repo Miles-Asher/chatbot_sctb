@@ -3,7 +3,13 @@
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get the message from the AJAX request
-    $message = $_POST['message'];
+    $message = isset($_POST['message']) ? $_POST['message'] : '';
+
+    // Check if the message is empty
+    if (empty($message)) {
+        echo json_encode(['error' => 'Message cannot be empty']);
+        exit();
+    }
 
     // API URL to the Gunicorn Flask app hosted at the given IP
     $apiUrl = 'http://15.165.204.98/chat';
@@ -23,15 +29,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Execute the request
     $response = curl_exec($ch);
 
-    // Check for errors
-    if (curl_errno($ch)) {
-        echo 'Error: ' . curl_error($ch);
+    // Check for cURL errors
+    if ($response === false) {
+        $error = curl_error($ch);
+        echo json_encode(['error' => 'Curl error: ' . $error]);
     } else {
-        // Return the response from the Python API
-        echo $response;
+        // Check if the response is a valid JSON
+        $decodedResponse = json_decode($response, true);
+        if (json_last_error() === JSON_ERROR_NONE) {
+            // Return the JSON response from the Flask API
+            echo $response;
+        } else {
+            // Handle invalid JSON response
+            echo json_encode(['error' => 'Invalid JSON response from the API']);
+        }
     }
 
     // Close the cURL session
     curl_close($ch);
 }
-?>
